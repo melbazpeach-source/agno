@@ -1337,11 +1337,12 @@ DEBUG **** Team Run End: dd59db94-3300-43ba-93c7-81eeabe8ed86 ****
 
 ### pydantic_input.py
 
-**Status:** FAIL
+**Status:** PASS
 
 **Description:** Example execution attempt
 
 **Result:** FAIL. Timeout after 120s
+**Re-verified:** 2026-02-16 — Post-rebase onto main. PASS. Team fetched HN top stories with structured Pydantic output. Completed in ~15s.
 
 ---
 

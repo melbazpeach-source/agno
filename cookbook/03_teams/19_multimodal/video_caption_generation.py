@@ -6,7 +6,7 @@ Demonstrates team-based video caption generation and embedding workflow.
 """
 
 from agno.agent import Agent
-from agno.models.openai import OpenAIResponses
+from agno.models.openai import OpenAIChat
 from agno.team import Team
 from agno.tools.moviepy_video import MoviePyVideoTools
 from agno.tools.openai import OpenAITools
@@ -17,8 +17,8 @@ from agno.tools.openai import OpenAITools
 video_processor = Agent(
     name="Video Processor",
     role="Handle video processing and audio extraction",
-    model=OpenAIResponses(id="gpt-5.2"),
-    tools=[MoviePyVideoTools(process_video=True, generate_captions=True)],
+    model=OpenAIChat(id="gpt-4o"),
+    tools=[MoviePyVideoTools(enable_process_video=True, enable_generate_captions=True)],
     instructions=[
         "Extract audio from videos for processing",
         "Handle video file operations efficiently",
@@ -28,8 +28,8 @@ video_processor = Agent(
 caption_generator = Agent(
     name="Caption Generator",
     role="Generate and embed captions in videos",
-    model=OpenAIResponses(id="gpt-5.2"),
-    tools=[MoviePyVideoTools(embed_captions=True), OpenAITools()],
+    model=OpenAIChat(id="gpt-4o"),
+    tools=[MoviePyVideoTools(enable_embed_captions=True), OpenAITools()],
     instructions=[
         "Transcribe audio to create accurate captions",
         "Generate SRT format captions with proper timing",
@@ -43,7 +43,7 @@ caption_generator = Agent(
 caption_team = Team(
     name="Video Caption Team",
     members=[video_processor, caption_generator],
-    model=OpenAIResponses(id="gpt-5.2"),
+    model=OpenAIChat(id="gpt-4o"),
     description="Team that generates and embeds captions for videos",
     instructions=[
         "Process videos to generate captions in this sequence:",

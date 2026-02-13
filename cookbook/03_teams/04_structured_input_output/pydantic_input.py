@@ -8,7 +8,7 @@ Demonstrates passing validated Pydantic models as team inputs.
 from typing import List
 
 from agno.agent import Agent
-from agno.models.openai import OpenAIResponses
+from agno.models.openai import OpenAIChat
 from agno.team import Team
 from agno.tools.hackernews import HackerNewsTools
 from pydantic import BaseModel, Field
@@ -28,7 +28,7 @@ class ResearchTopic(BaseModel):
 # ---------------------------------------------------------------------------
 hackernews_agent = Agent(
     name="Hackernews Agent",
-    model=OpenAIResponses(id="gpt-5-mini"),
+    model=OpenAIChat(id="o3-mini"),
     tools=[HackerNewsTools()],
     role="Extract key insights and content from Hackernews posts",
     instructions=[
@@ -43,9 +43,8 @@ hackernews_agent = Agent(
 # ---------------------------------------------------------------------------
 team = Team(
     name="Hackernews Research Team",
-    model=OpenAIResponses(id="gpt-5-mini"),
+    model=OpenAIChat(id="o3-mini"),
     members=[hackernews_agent],
-    determine_input_for_members=False,
     instructions=[
         "Conduct thorough research based on the structured input",
         "Address all focus areas mentioned in the research topic",
