@@ -11,11 +11,24 @@ on:
     types: [opened, assigned]
   pull_request_review:
     types: [submitted]
+  # Manual trigger for testing on non-default branches (remove after validation)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Test mode to simulate'
+        required: true
+        type: choice
+        options:
+          - review
+          - assistant
+      test_prompt:
+        description: 'Simulated @claude message'
+        required: false
+        default: '@claude review this PR'
 
 jobs:
-  # Automated code review on all non-draft PRs
-  # Uses both official plugins: code-review (4 agents) + pr-review-toolkit (6 agents)
-  review:
+  # Auto-review on every non-draft PR open/update
+  auto-review:
     if: |
       github.event_name == 'pull_request' &&
       !github.event.pull_request.draft
@@ -32,7 +45,6 @@ jobs:
           fetch-depth: 0
 
       - name: Run Claude Code Review
-        id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_CI_API_KEY }}
@@ -42,7 +54,6 @@ jobs:
             pr-review-toolkit@claude-code-plugins
           track_progress: true
           use_sticky_comment: true
-          show_full_output: true  # TEMP: remove after validation
           claude_args: |
             --model "claude-opus-4-6"
           prompt: |
@@ -58,13 +69,16 @@ jobs:
             - CLAUDE.md coding patterns are followed
             - No f-strings for print lines where there are no variables
 
-  # Interactive assistant when @claude is mentioned
-  assistant:
+  # Smart @claude handler: routes to review (with plugins) or assistant mode
+  # "@claude review this" on a PR → full review with 10 agents
+  # "@claude how do hooks work" → general assistant
+  claude:
     if: |
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body || '', '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body || '', '@claude') || contains(github.event.issue.title || '', '@claude')))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -78,8 +92,66 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Claude Code
-        id: claude
+      - name: Detect mode
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_URL: ${{ github.event.issue.pull_request.url || '' }}
+          COMMENT_BODY: ${{ github.event.comment.body || github.event.review.body || github.event.issue.body || '' }}
+          DISPATCH_MODE: ${{ github.event.inputs.mode || '' }}
+        run: |
+          # Manual dispatch: whitelist and use the selected mode directly
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            case "$DISPATCH_MODE" in
+              review|assistant) echo "mode=$DISPATCH_MODE" >> "$GITHUB_OUTPUT" ;;
+              *) echo "mode=assistant" >> "$GITHUB_OUTPUT" ;;
+            esac
+            exit 0
+          fi
+
+          # Determine if we're in a PR context (not a plain issue)
+          IS_PR="false"
+          case "$EVENT_NAME" in
+            pull_request_review_comment|pull_request_review) IS_PR="true" ;;
+            issue_comment) [ -n "$PR_URL" ] && IS_PR="true" ;;
+          esac
+
+          # Review mode: PR context + "review" keyword in comment
+          if [ "$IS_PR" = "true" ] && echo "$COMMENT_BODY" | grep -iqE '\breview\b'; then
+            echo "mode=review" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=assistant" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Claude Review
+        if: steps.detect.outputs.mode == 'review'
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_CI_API_KEY }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: |
+            code-review@claude-code-plugins
+            pr-review-toolkit@claude-code-plugins
+          track_progress: true
+          use_sticky_comment: true
+          claude_args: |
+            --model "claude-opus-4-6"
+          prompt: |
+            The user requested a code review via @claude mention.
+
+            After completing the review, you MUST end with a plain-text markdown summary of findings.
+            Never let the final action be a tool call.
+            If there are no issues, explicitly say "No high-confidence findings."
+
+            Agno-specific checks (always verify):
+            - Both sync and async variants exist for all new public methods
+            - No agent creation inside loops (agents should be reused)
+            - CLAUDE.md coding patterns are followed
+            - No f-strings for print lines where there are no variables
+
+      - name: Claude Assistant
+        if: steps.detect.outputs.mode == 'assistant'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_CI_API_KEY }}
+          prompt: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.test_prompt || '' }}
