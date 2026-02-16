@@ -840,6 +840,14 @@ class Knowledge(RemoteKnowledge):
         )
         content.file_data = file_data
 
+        # Compute content_hash for the refreshed content (not stored in KnowledgeRow)
+        content.content_hash = self._build_content_hash(content)
+
+        # Delete old vector records for this content before re-inserting.
+        # The content_hash may have changed, so deleting by content_id ensures
+        # stale embeddings are removed regardless of hash changes.
+        self._delete_vector_records_for_content(content_id)
+
         # Re-process: load content with upsert=True, skip_if_exists=False
         self._load_content(content, upsert=True, skip_if_exists=False, backup=False)
         return content
@@ -863,9 +871,28 @@ class Knowledge(RemoteKnowledge):
         )
         content.file_data = file_data
 
+        # Compute content_hash for the refreshed content (not stored in KnowledgeRow)
+        content.content_hash = self._build_content_hash(content)
+
+        # Delete old vector records for this content before re-inserting
+        self._delete_vector_records_for_content(content_id)
+
         # Re-process: load content with upsert=True, skip_if_exists=False
         await self._aload_content(content, upsert=True, skip_if_exists=False, backup=False)
         return content
+
+    def _delete_vector_records_for_content(self, content_id: str) -> None:
+        """Delete all vector DB records associated with a content_id.
+
+        Used during refresh to remove stale embeddings before re-inserting.
+        Deletes by content_id (not content_hash) so it works even when the
+        content hash changes between the original ingest and the refresh.
+        """
+        if self.vector_db and hasattr(self.vector_db, "delete_by_content_id"):
+            try:
+                self.vector_db.delete_by_content_id(content_id)
+            except Exception as e:
+                log_warning(f"Failed to delete old vector records for {content_id}: {e}")
 
     def _resolve_refresh_source(self, content: Content) -> tuple:
         """Determine the best source to refresh content from and fetch it.
