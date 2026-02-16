@@ -892,12 +892,15 @@ class Knowledge(RemoteKnowledge):
         Used during refresh to remove stale embeddings before re-inserting.
         Deletes by content_id (not content_hash) so it works even when the
         content hash changes between the original ingest and the refresh.
+
+        Raises on failure so callers abort instead of re-inserting duplicates.
+
+        Note: uses the sync vector DB call even from async callers, matching
+        the existing pattern (e.g. pgvector.async_upsert calls sync
+        content_hash_exists and _delete_by_content_hash directly).
         """
         if self.vector_db and hasattr(self.vector_db, "delete_by_content_id"):
-            try:
-                self.vector_db.delete_by_content_id(content_id)
-            except Exception as e:
-                log_warning(f"Failed to delete old vector records for {content_id}: {e}")
+            self.vector_db.delete_by_content_id(content_id)
 
     def _resolve_refresh_source(self, content: Content) -> tuple:
         """Determine the best source to refresh content from and fetch it.
