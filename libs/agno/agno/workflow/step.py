@@ -30,7 +30,16 @@ from agno.session.workflow import WorkflowSession
 from agno.team import Team
 from agno.utils.log import log_debug, log_warning, logger, use_agent_logger, use_team_logger, use_workflow_logger
 from agno.utils.merge_dict import merge_dictionaries
-from agno.workflow.types import OnError, OnReject, StepInput, StepOutput, StepType
+from agno.workflow.types import (
+    ErrorRequirement,
+    OnError,
+    OnReject,
+    StepInput,
+    StepOutput,
+    StepRequirement,
+    StepType,
+    UserInputField,
+)
 
 StepExecutor = Callable[
     [StepInput],
@@ -298,6 +307,78 @@ class Step:
             )
 
         return links
+
+    def create_step_requirement(
+        self,
+        step_index: int,
+        step_input: StepInput,
+    ) -> StepRequirement:
+        """Create a StepRequirement for HITL pause (confirmation or user input).
+
+        Args:
+            step_index: Index of the step in the workflow.
+            step_input: The prepared input for the step.
+
+        Returns:
+            StepRequirement configured for this step's HITL needs.
+        """
+        user_input_schema = self._normalize_user_input_schema() if self.requires_user_input else None
+
+        return StepRequirement(
+            step_id=self.step_id or str(uuid4()),
+            step_name=self.name or f"step_{step_index + 1}",
+            step_index=step_index,
+            requires_confirmation=self.requires_confirmation,
+            confirmation_message=self.confirmation_message,
+            on_reject=str(self.on_reject),
+            requires_user_input=self.requires_user_input,
+            user_input_message=self.user_input_message,
+            user_input_schema=user_input_schema,
+            step_input=step_input,
+        )
+
+    def create_error_requirement(
+        self,
+        step_index: int,
+        error: Exception,
+    ) -> ErrorRequirement:
+        """Create an ErrorRequirement for HITL pause on error.
+
+        Args:
+            step_index: Index of the step in the workflow.
+            error: The exception that was raised.
+
+        Returns:
+            ErrorRequirement configured for error handling.
+        """
+        return ErrorRequirement(
+            step_id=self.step_id or str(uuid4()),
+            step_name=self.name or f"step_{step_index + 1}",
+            step_index=step_index,
+            error_message=str(error),
+            error_type=type(error).__name__,
+            retry_count=self._retry_count,
+        )
+
+    def _normalize_user_input_schema(self) -> Optional[List[UserInputField]]:
+        """Normalize user_input_schema to a list of UserInputField objects."""
+        if not self.user_input_schema:
+            return None
+
+        result: List[UserInputField] = []
+        for f in self.user_input_schema:
+            if isinstance(f, UserInputField):
+                result.append(f)
+            elif isinstance(f, dict):
+                result.append(
+                    UserInputField(
+                        name=f["name"],
+                        field_type=f.get("field_type", "str"),
+                        description=f.get("description"),
+                        required=f.get("required", True),
+                    )
+                )
+        return result
 
     @property
     def executor_name(self) -> str:

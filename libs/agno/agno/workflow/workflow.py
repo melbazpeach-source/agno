@@ -92,13 +92,11 @@ from agno.workflow.router import Router
 from agno.workflow.step import Step
 from agno.workflow.steps import Steps
 from agno.workflow.types import (
-    ErrorRequirement,
     StepInput,
     StepMetrics,
     StepOutput,
     StepRequirement,
     StepType,
-    UserInputField,
     WorkflowExecutionInput,
     WorkflowMetrics,
 )
@@ -111,95 +109,6 @@ STEP_TYPE_MAPPING = {
     Condition: StepType.CONDITION,
     Router: StepType.ROUTER,
 }
-
-
-def _normalize_user_input_schema(schema: Optional[List[Any]]) -> Optional[List[UserInputField]]:
-    """Convert user input schema to list of UserInputField objects.
-
-    Handles both UserInputField objects and dict format (from @hitl decorator).
-    """
-    if not schema:
-        return None
-    result = []
-    for f in schema:
-        if isinstance(f, UserInputField):
-            result.append(f)
-        else:
-            # Dict format
-            result.append(
-                UserInputField(
-                    name=f["name"],
-                    field_type=f.get("field_type", "str"),
-                    description=f.get("description"),
-                    required=f.get("required", True),
-                )
-            )
-    return result
-
-
-# =============================================================================
-# HITL Helper Functions
-# =============================================================================
-
-
-def _create_step_requirement(
-    step: "Step",
-    step_name: str,
-    step_index: int,
-    step_input: "StepInput",
-) -> "StepRequirement":
-    """Create a StepRequirement for HITL pause (confirmation or user input).
-
-    Args:
-        step: The Step object requiring HITL.
-        step_name: Name of the step.
-        step_index: Index of the step in the workflow.
-        step_input: The prepared input for the step.
-
-    Returns:
-        StepRequirement configured for the step's HITL needs.
-    """
-    user_input_schema = _normalize_user_input_schema(step.user_input_schema) if step.requires_user_input else None
-
-    return StepRequirement(
-        step_id=step.step_id or str(uuid4()),
-        step_name=step_name,
-        step_index=step_index,
-        requires_confirmation=step.requires_confirmation,
-        confirmation_message=step.confirmation_message,
-        on_reject=str(step.on_reject),
-        requires_user_input=step.requires_user_input,
-        user_input_message=step.user_input_message,
-        user_input_schema=user_input_schema,
-        step_input=step_input,
-    )
-
-
-def _create_error_requirement(
-    step: Union["Step", "Steps", "Loop", "Parallel", "Condition", "Router"],
-    step_name: str,
-    step_index: int,
-    error: Exception,
-) -> "ErrorRequirement":
-    """Create an ErrorRequirement for HITL pause on error.
-
-    Args:
-        step: The step that encountered an error.
-        step_name: Name of the step.
-        step_index: Index of the step in the workflow.
-        error: The exception that was raised.
-
-    Returns:
-        ErrorRequirement configured for error handling.
-    """
-    return ErrorRequirement(
-        step_id=getattr(step, "step_id", str(uuid4())),
-        step_name=step_name,
-        step_index=step_index,
-        error_message=str(error),
-        error_type=type(error).__name__,
-        retry_count=getattr(step, "_retry_count", 0),
-    )
 
 
 def _create_skipped_step_output(
@@ -1862,7 +1771,7 @@ class Workflow:
                         hitl_type = "confirmation" if step.requires_confirmation else "user input"
                         log_debug(f"Step '{step_name}' requires {hitl_type} - pausing workflow")
 
-                        step_requirement = _create_step_requirement(step, step_name, i, step_input)
+                        step_requirement = step.create_step_requirement(i, step_input)
 
                         # Store the paused state
                         workflow_run_response.status = RunStatus.paused
@@ -1922,7 +1831,7 @@ class Workflow:
                             # Pause workflow and let user decide to retry or skip
                             log_debug(f"Step '{step_name}' failed with on_error='pause' - pausing workflow")
 
-                            error_requirement = _create_error_requirement(step, step_name, i, step_error)
+                            error_requirement = cast(Step, step).create_error_requirement(i, step_error)
 
                             # Store the paused state
                             workflow_run_response.status = RunStatus.paused
@@ -2127,7 +2036,7 @@ class Workflow:
                         hitl_type = "confirmation" if step.requires_confirmation else "user input"
                         log_debug(f"Step '{step_name}' requires {hitl_type} - pausing workflow")
 
-                        step_requirement = _create_step_requirement(step, step_name, i, step_input)
+                        step_requirement = step.create_step_requirement(i, step_input)
 
                         # Store the paused state
                         workflow_run_response.status = RunStatus.paused
@@ -2293,7 +2202,7 @@ class Workflow:
                             # Pause workflow and let user decide to retry or skip
                             log_debug(f"Step '{step_name}' failed with on_error='pause' - pausing workflow")
 
-                            error_requirement = _create_error_requirement(step, step_name, i, step_error_exception)
+                            error_requirement = cast(Step, step).create_error_requirement(i, step_error_exception)
 
                             # Store the paused state
                             workflow_run_response.status = RunStatus.paused
@@ -2645,7 +2554,7 @@ class Workflow:
                         hitl_type = "confirmation" if step.requires_confirmation else "user input"
                         log_debug(f"Step '{step_name}' requires {hitl_type} - pausing workflow")
 
-                        step_requirement = _create_step_requirement(step, step_name, i, step_input)
+                        step_requirement = step.create_step_requirement(i, step_input)
 
                         # Store the paused state
                         workflow_run_response.status = RunStatus.paused
@@ -2713,7 +2622,7 @@ class Workflow:
                             # Pause workflow and let user decide to retry or skip
                             log_debug(f"Step '{step_name}' failed with on_error='pause' - pausing workflow")
 
-                            error_requirement = _create_error_requirement(step, step_name, i, step_error)
+                            error_requirement = cast(Step, step).create_error_requirement(i, step_error)
 
                             # Store the paused state
                             workflow_run_response.status = RunStatus.paused
@@ -2938,7 +2847,7 @@ class Workflow:
                         hitl_type = "confirmation" if step.requires_confirmation else "user input"
                         log_debug(f"Step '{step_name}' requires {hitl_type} - pausing workflow")
 
-                        step_requirement = _create_step_requirement(step, step_name, i, step_input)
+                        step_requirement = step.create_step_requirement(i, step_input)
 
                         # Store the paused state
                         workflow_run_response.status = RunStatus.paused
@@ -3118,7 +3027,7 @@ class Workflow:
                             # Pause workflow and let user decide to retry or skip
                             log_debug(f"Step '{step_name}' failed with on_error='pause' - pausing workflow")
 
-                            error_requirement = _create_error_requirement(step, step_name, i, step_error_exception)
+                            error_requirement = cast(Step, step).create_error_requirement(i, step_error_exception)
 
                             # Store the paused state
                             workflow_run_response.status = RunStatus.paused
@@ -4836,7 +4745,7 @@ class Workflow:
                     hitl_type = "confirmation" if step.requires_confirmation else "user input"
                     log_debug(f"Step '{step_name}' requires {hitl_type} - pausing workflow")
 
-                    step_requirement = _create_step_requirement(step, step_name, i, step_input)
+                    step_requirement = step.create_step_requirement(i, step_input)
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [step_requirement]
@@ -4892,7 +4801,7 @@ class Workflow:
                         # Pause workflow and let user decide to retry or skip
                         log_debug(f"Step '{step_name}' failed with on_error='pause' - pausing workflow")
 
-                        error_requirement = _create_error_requirement(step, step_name, i, step_error)
+                        error_requirement = cast(Step, step).create_error_requirement(i, step_error)
 
                         # Store the paused state
                         workflow_run_response.status = RunStatus.paused
@@ -5151,7 +5060,7 @@ class Workflow:
                     hitl_type = "confirmation" if step.requires_confirmation else "user input"
                     log_debug(f"Step '{step_name}' requires {hitl_type} - pausing workflow")
 
-                    step_requirement = _create_step_requirement(step, step_name, i, step_input)
+                    step_requirement = step.create_step_requirement(i, step_input)
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [step_requirement]
@@ -5295,7 +5204,7 @@ class Workflow:
                     if step_on_error == "pause":
                         log_debug(f"Step '{step_name}' failed with on_error='pause' - pausing workflow")
 
-                        error_requirement = _create_error_requirement(step, step_name, i, step_error_exception)
+                        error_requirement = cast(Step, step).create_error_requirement(i, step_error_exception)
 
                         workflow_run_response.status = RunStatus.paused
                         workflow_run_response.error_requirements = [error_requirement]
@@ -5801,7 +5710,7 @@ class Workflow:
                     hitl_type = "confirmation" if step.requires_confirmation else "user input"
                     log_debug(f"Step '{step_name}' requires {hitl_type} - pausing workflow")
 
-                    step_requirement = _create_step_requirement(step, step_name, i, step_input)
+                    step_requirement = step.create_step_requirement(i, step_input)
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [step_requirement]
@@ -5856,7 +5765,7 @@ class Workflow:
                     if step_on_error == "pause":
                         log_debug(f"Step '{step_name}' failed with on_error='pause' - pausing workflow")
 
-                        error_requirement = _create_error_requirement(step, step_name, i, step_error)
+                        error_requirement = cast(Step, step).create_error_requirement(i, step_error)
 
                         workflow_run_response.status = RunStatus.paused
                         workflow_run_response.error_requirements = [error_requirement]
@@ -6113,7 +6022,7 @@ class Workflow:
                     hitl_type = "confirmation" if step.requires_confirmation else "user input"
                     log_debug(f"Step '{step_name}' requires {hitl_type} - pausing workflow")
 
-                    step_requirement = _create_step_requirement(step, step_name, i, step_input)
+                    step_requirement = step.create_step_requirement(i, step_input)
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [step_requirement]
@@ -6257,7 +6166,7 @@ class Workflow:
                     if step_on_error == "pause":
                         log_debug(f"Step '{step_name}' failed with on_error='pause' - pausing workflow")
 
-                        error_requirement = _create_error_requirement(step, step_name, i, step_error_exception)
+                        error_requirement = cast(Step, step).create_error_requirement(i, step_error_exception)
 
                         workflow_run_response.status = RunStatus.paused
                         workflow_run_response.error_requirements = [error_requirement]
