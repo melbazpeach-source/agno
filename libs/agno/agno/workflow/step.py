@@ -955,7 +955,11 @@ class Step:
 
                         # Check if agent/team response is paused (e.g., due to tool HITL)
                         # This is NOT supported at workflow level - warn the user
-                        if hasattr(active_executor_run_response, "is_paused") and active_executor_run_response.is_paused:
+                        if (
+                            active_executor_run_response is not None
+                            and hasattr(active_executor_run_response, "is_paused")
+                            and active_executor_run_response.is_paused
+                        ):
                             logger.warning(
                                 f"Step '{self.name}': Agent/Team response is paused (likely due to tool HITL). "
                                 "Agent tool-level HITL is NOT propagated to the workflow. "
@@ -1512,7 +1516,11 @@ class Step:
 
                         # Check if agent/team response is paused (e.g., due to tool HITL)
                         # This is NOT supported at workflow level - warn the user
-                        if hasattr(active_executor_run_response, "is_paused") and active_executor_run_response.is_paused:
+                        if (
+                            active_executor_run_response is not None
+                            and hasattr(active_executor_run_response, "is_paused")
+                            and active_executor_run_response.is_paused
+                        ):
                             logger.warning(
                                 f"Step '{self.name}': Agent/Team response is paused (likely due to tool HITL). "
                                 "Agent tool-level HITL is NOT propagated to the workflow. "
