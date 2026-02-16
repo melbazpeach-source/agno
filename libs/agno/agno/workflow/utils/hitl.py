@@ -150,7 +150,7 @@ def create_router_paused_event(
         session_id=workflow_run_response.session_id,
         step_name=step_name,
         step_index=step_index,
-        available_choices=req.available_choices if req else [],
+        available_choices=req.available_choices if req and req.available_choices else [],
         user_input_message=req.user_input_message if req else None,
         allow_multiple_selections=req.allow_multiple_selections if req else False,
     )

@@ -131,27 +131,17 @@ class Loop:
         self,
         step_index: int,
         step_input: StepInput,
-        is_iteration_confirmation: bool = False,
-        current_iteration: int = 0,
     ) -> StepRequirement:
         """Create a StepRequirement for HITL pause.
 
         Args:
             step_index: Index of the loop in the workflow.
             step_input: The prepared input for the loop.
-            is_iteration_confirmation: If True, this is for per-iteration confirmation.
-            current_iteration: Current iteration number (1-indexed).
 
         Returns:
             StepRequirement configured for this loop's HITL needs.
         """
-        if is_iteration_confirmation:
-            message = self.iteration_confirmation_message or (
-                f"Loop '{self.name or 'loop'}' completed iteration {current_iteration}. "
-                f"Continue to iteration {current_iteration + 1}?"
-            )
-        else:
-            message = self.confirmation_message or f"Execute loop '{self.name or 'loop'}'?"
+        message = self.confirmation_message or f"Execute loop '{self.name or 'loop'}'?"
 
         return StepRequirement(
             step_id=str(uuid4()),
@@ -160,7 +150,7 @@ class Loop:
             step_type="Loop",
             requires_confirmation=True,
             confirmation_message=message,
-            on_reject=(self.on_reject.value if isinstance(self.on_reject, OnReject) else str(self.on_reject)) if not is_iteration_confirmation else "skip",
+            on_reject=self.on_reject.value if isinstance(self.on_reject, OnReject) else str(self.on_reject),
             requires_user_input=False,
             step_input=step_input,
         )
@@ -220,8 +210,6 @@ class Loop:
             requires_confirmation=data.get("requires_confirmation", False),
             confirmation_message=data.get("confirmation_message"),
             on_reject=data.get("on_reject", OnReject.skip),
-            requires_iteration_confirmation=data.get("requires_iteration_confirmation", False),
-            iteration_confirmation_message=data.get("iteration_confirmation_message"),
         )
 
     def _evaluate_end_condition(self, iteration_results: List[StepOutput], current_iteration: int = 0) -> bool:
