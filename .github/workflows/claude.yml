@@ -11,20 +11,6 @@ on:
     types: [opened, assigned]
   pull_request_review:
     types: [submitted]
-  # Manual trigger for testing on non-default branches (remove after validation)
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: 'Test mode to simulate'
-        required: true
-        type: choice
-        options:
-          - review
-          - assistant
-      test_prompt:
-        description: 'Simulated @claude message'
-        required: false
-        default: '@claude review this PR'
 
 jobs:
   # Auto-review on every non-draft PR open/update
@@ -74,7 +60,6 @@ jobs:
   # "@claude how do hooks work" → general assistant
   claude:
     if: |
-      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body || '', '@claude')) ||
@@ -98,17 +83,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           PR_URL: ${{ github.event.issue.pull_request.url || '' }}
           COMMENT_BODY: ${{ github.event.comment.body || github.event.review.body || github.event.issue.body || '' }}
-          DISPATCH_MODE: ${{ github.event.inputs.mode || '' }}
         run: |
-          # Manual dispatch: whitelist and use the selected mode directly
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            case "$DISPATCH_MODE" in
-              review|assistant) echo "mode=$DISPATCH_MODE" >> "$GITHUB_OUTPUT" ;;
-              *) echo "mode=assistant" >> "$GITHUB_OUTPUT" ;;
-            esac
-            exit 0
-          fi
-
           # Determine if we're in a PR context (not a plain issue)
           IS_PR="false"
           case "$EVENT_NAME" in
@@ -154,4 +129,3 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_CI_API_KEY }}
-          prompt: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.test_prompt || '' }}
