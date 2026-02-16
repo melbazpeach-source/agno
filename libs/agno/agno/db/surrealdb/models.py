@@ -331,7 +331,7 @@ def get_schema(table_type: TableType, table_name: str) -> str:
     elif table_type == "context":
         return dedent(f"""
             {define_table}
-            DEFINE FIELD OVERWRITE created_at ON {table_name} TYPE datetime VALUE time::now();
+            DEFINE FIELD OVERWRITE created_at ON {table_name} TYPE datetime DEFAULT time::now();
             DEFINE FIELD OVERWRITE updated_at ON {table_name} TYPE datetime VALUE time::now();
             """)
     elif table_type == "sessions":
