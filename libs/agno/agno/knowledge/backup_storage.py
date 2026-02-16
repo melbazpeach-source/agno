@@ -5,6 +5,7 @@ or local filesystem. This enables features like content refresh (re-embedding
 from original files) and file access by agents.
 """
 
+import asyncio
 import os
 from typing import Any, Dict, List, Optional, cast
 
@@ -69,16 +70,16 @@ class BackupStorage:
         """Async version of store.
 
         Uses true async I/O for Azure Blob and local filesystem.
-        Note: S3 and GCS use sync SDK calls as they don't have async APIs.
+        S3 and GCS use sync SDKs offloaded via asyncio.to_thread().
         """
         if isinstance(self.storage_config, S3Config):
-            return self._store_to_s3(content_id, filename, file_data)
+            return await asyncio.to_thread(self._store_to_s3, content_id, filename, file_data)
         elif isinstance(self.storage_config, LocalStorageConfig):
             return await self._astore_to_local(content_id, filename, file_data)
         elif isinstance(self.storage_config, AzureBlobConfig):
             return await self._astore_to_azure_blob(content_id, filename, file_data)
         elif isinstance(self.storage_config, GcsConfig):
-            return self._store_to_gcs(content_id, filename, file_data)
+            return await asyncio.to_thread(self._store_to_gcs, content_id, filename, file_data)
         else:
             raise ValueError(f"Unsupported backup storage config type: {type(self.storage_config).__name__}")
 
@@ -111,17 +112,17 @@ class BackupStorage:
         """Async version of fetch.
 
         Uses true async I/O for Azure Blob and local filesystem.
-        Note: S3 and GCS use sync SDK calls as they don't have async APIs.
+        S3 and GCS use sync SDKs offloaded via asyncio.to_thread().
         """
         backup_storage_type = agno_metadata.get("backup_storage_type")
         if backup_storage_type == "s3":
-            return self._fetch_from_s3(agno_metadata)
+            return await asyncio.to_thread(self._fetch_from_s3, agno_metadata)
         elif backup_storage_type == "local":
             return await self._afetch_from_local(agno_metadata)
         elif backup_storage_type == "azure_blob":
             return await self._afetch_from_azure_blob(agno_metadata)
         elif backup_storage_type == "gcs":
-            return self._fetch_from_gcs(agno_metadata)
+            return await asyncio.to_thread(self._fetch_from_gcs, agno_metadata)
         else:
             raise ValueError(f"Unknown backup storage type: {backup_storage_type}")
 
@@ -155,16 +156,16 @@ class BackupStorage:
         """Async version of fetch_from_source.
 
         Uses true async I/O for Azure Blob, SharePoint, and GitHub.
-        Note: S3 and GCS use sync SDK calls as they don't have async APIs.
+        S3 and GCS use sync SDKs offloaded via asyncio.to_thread().
         """
         source_type = agno_metadata.get("source_type")
         if not source_type:
             raise ValueError("No source_type in metadata, cannot fetch from original source")
 
         if source_type == "s3":
-            return self._fetch_original_s3(agno_metadata)
+            return await asyncio.to_thread(self._fetch_original_s3, agno_metadata)
         elif source_type == "gcs":
-            return self._fetch_original_gcs(agno_metadata)
+            return await asyncio.to_thread(self._fetch_original_gcs, agno_metadata)
         elif source_type == "sharepoint":
             return await self._afetch_original_sharepoint(agno_metadata)
         elif source_type == "github":
@@ -335,7 +336,7 @@ class BackupStorage:
             raise ValueError("Storage config is not LocalStorageConfig")
 
         file_path, dir_path = self._safe_local_path(config, content_id, filename)
-        os.makedirs(dir_path, exist_ok=True)
+        await asyncio.to_thread(os.makedirs, dir_path, exist_ok=True)
 
         async with aiofiles.open(file_path, "wb") as f:
             await f.write(file_data)
@@ -372,7 +373,8 @@ class BackupStorage:
 
         file_path = self._validate_local_fetch_path(file_path)
 
-        if not os.path.exists(file_path):
+        exists = await asyncio.to_thread(os.path.exists, file_path)
+        if not exists:
             raise FileNotFoundError(f"Backup file not found: {file_path}")
 
         async with aiofiles.open(file_path, "rb") as f:
