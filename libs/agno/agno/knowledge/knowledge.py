@@ -2,7 +2,7 @@ import asyncio
 import hashlib
 import io
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from io import BytesIO
 from os.path import basename
@@ -54,7 +54,7 @@ class Knowledge(RemoteKnowledge):
     isolate_vector_search: bool = False
 
     # Internal: lazily initialized BackupStorage instance
-    _backup_storage: Optional[Any] = None
+    _backup_storage: Optional[Any] = field(init=False, default=None, repr=False)
 
     def __post_init__(self):
         from agno.vectordb import VectorDb
