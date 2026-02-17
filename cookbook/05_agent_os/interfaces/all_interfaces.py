@@ -10,6 +10,8 @@ from agno.os.interfaces.a2a import A2A
 from agno.os.interfaces.agui import AGUI
 from agno.os.interfaces.slack import Slack
 from agno.os.interfaces.whatsapp import Whatsapp
+from agno.registry import Registry
+from agno.tools.mcp import MCPTools
 
 # --- Setup ---
 
@@ -21,6 +23,15 @@ agent = Agent(
     instructions=["You are an expert in the Agno framework."],
     db=db,
 )
+registry = Registry(
+    name="Agno Registry",
+    tools=[MCPTools(transport="streamable-http", url="https://docs.agno.com/mcp")],
+    models=[
+        OpenAIChat(id="gpt-4o-mini"),
+    ],
+    dbs=[db],
+)
+
 
 # # Create an interface
 slack_interface = Slack(agent=agent)
@@ -31,6 +42,7 @@ a2a_interface = A2A(agents=[agent])
 agent_os = AgentOS(
     name="Documentation all API references",
     agents=[agent],
+    registry=registry,
     db=db,
     interfaces=[slack_interface, whatsapp_interface, agui_interface, a2a_interface],
 )
