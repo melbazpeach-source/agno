@@ -141,7 +141,7 @@ daytona = ["daytona"]
 oxylabs = ["oxylabs"]
 trafilatura = ["trafilatura"]
 neo4j = ["neo4j"]
-telegram = ["pyTelegramBotAPI>=4.29.0"]
+telegram = ["pyTelegramBotAPI>=4.29.0", "aiohttp"]
 
 # Dependencies for Storage
 sql = ["sqlalchemy"]

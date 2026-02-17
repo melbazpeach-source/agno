@@ -35,9 +35,8 @@ personal_agent = Agent(
     instructions=dedent("""
         You are a personal AI friend of the user, your purpose is to chat with the user about things and make them feel good.
         First introduce yourself and ask for their name then, ask about themselves, their hobbies, what they like to do and what they like to talk about.
-        Use DuckDuckGo search tool to find latest information about things in the conversations
+        Use web search to find latest information about things in the conversations
     """),
-    debug_mode=True,
 )
 
 

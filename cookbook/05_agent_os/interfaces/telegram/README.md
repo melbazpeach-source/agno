@@ -47,7 +47,7 @@ The `APP_ENV=development` setting is important for local testing. Without it, th
 ### 4. Run the bot
 
 ```bash
-.venvs/demo/bin/python cookbook/05_agent_os/interfaces/telegram/basic_agent.py
+.venvs/demo/bin/python cookbook/05_agent_os/interfaces/telegram/basic.py
 ```
 
 The server starts on `http://localhost:7777`.
@@ -83,12 +83,11 @@ Open your bot in Telegram and send `/start` or any message. You should see:
 
 | File | Model | Description |
 |------|-------|-------------|
-| `basic.py` | OpenAI `gpt-4o` | Minimal setup with conversation history |
-| `basic_agent.py` | Gemini `gemini-2.5-pro` | Basic agent with group chat mention filtering |
+| `basic.py` | Gemini `gemini-2.5-pro` | Basic agent with conversation history and group chat mention filtering |
 | `agent_with_user_memory.py` | Gemini `gemini-2.0-flash` | Remembers user preferences across sessions using MemoryManager |
 | `agent_with_media.py` | Gemini + DALL-E + ElevenLabs | Generates images and audio, analyzes inbound media |
 | `reasoning_agent.py` | Claude `claude-3-7-sonnet` | Uses ReasoningTools and DuckDuckGo for research |
-| `multiple_instances.py` | OpenAI `gpt-5.2` | Two bots on one server with separate webhook paths (`/basic`, `/web-research`) |
+| `multiple_instances.py` | OpenAI `gpt-5.2` | One bot with two agents on separate webhook paths (`/basic`, `/web-research`) |
 
 Run any example:
 

@@ -285,14 +285,21 @@ class TestWebhookEndpoint:
 
 
 def _build_telegram_client(
-    agent=None, team=None, workflow=None, reply_to_mentions_only=True, reply_to_bot_messages=True
+    agent=None,
+    team=None,
+    workflow=None,
+    reply_to_mentions_only=True,
+    reply_to_bot_messages=True,
+    start_message=None,
+    help_message=None,
+    error_message=None,
 ):
     from fastapi import APIRouter
 
     from agno.os.interfaces.telegram.router import attach_routes
 
     router = APIRouter(prefix="/telegram")
-    attach_routes(
+    kwargs: dict = dict(
         router=router,
         agent=agent,
         team=team,
@@ -300,6 +307,13 @@ def _build_telegram_client(
         reply_to_mentions_only=reply_to_mentions_only,
         reply_to_bot_messages=reply_to_bot_messages,
     )
+    if start_message is not None:
+        kwargs["start_message"] = start_message
+    if help_message is not None:
+        kwargs["help_message"] = help_message
+    if error_message is not None:
+        kwargs["error_message"] = error_message
+    attach_routes(**kwargs)
     app = FastAPI()
     app.include_router(router)
     return TestClient(app)
@@ -2061,3 +2075,190 @@ class TestCodexReviewFixes:
         agent.arun.assert_called_once()
         call_kwargs = agent.arun.call_args[1]
         assert call_kwargs["images"] is None
+
+
+class TestBotMessageFiltering:
+    def _bot_update(self, text="Hello from bot", chat_id=12345):
+        return {
+            "update_id": 1,
+            "message": {
+                "message_id": 100,
+                "from": {"id": 99999, "is_bot": True, "first_name": "OtherBot"},
+                "chat": {"id": chat_id, "type": "private"},
+                "text": text,
+            },
+        }
+
+    def test_bot_messages_are_ignored(self, monkeypatch):
+        monkeypatch.setenv("TELEGRAM_TOKEN", "fake-token")
+        monkeypatch.setenv("APP_ENV", "development")
+
+        agent = AsyncMock()
+        agent.arun = AsyncMock()
+        mock_bot = AsyncMock()
+
+        with patch(f"{ROUTER_MODULE}.AsyncTeleBot", return_value=mock_bot):
+            client = _build_telegram_client(agent=agent)
+            resp = client.post("/telegram/webhook", json=self._bot_update())
+
+        assert resp.status_code == 200
+        agent.arun.assert_not_called()
+
+    def test_human_messages_are_processed(self, monkeypatch):
+        monkeypatch.setenv("TELEGRAM_TOKEN", "fake-token")
+        monkeypatch.setenv("APP_ENV", "development")
+
+        mock_response = MagicMock()
+        mock_response.status = "COMPLETED"
+        mock_response.content = "reply"
+        mock_response.reasoning_content = None
+        mock_response.images = None
+
+        agent = AsyncMock()
+        agent.arun = AsyncMock(return_value=mock_response)
+        mock_bot = AsyncMock()
+
+        with patch(f"{ROUTER_MODULE}.AsyncTeleBot", return_value=mock_bot):
+            client = _build_telegram_client(agent=agent)
+            resp = client.post(
+                "/telegram/webhook",
+                json={
+                    "update_id": 1,
+                    "message": {
+                        "message_id": 100,
+                        "from": {"id": 67890, "is_bot": False, "first_name": "Human"},
+                        "chat": {"id": 12345, "type": "private"},
+                        "text": "Hello from human",
+                    },
+                },
+            )
+
+        assert resp.status_code == 200
+        agent.arun.assert_called_once()
+
+
+class TestCustomMessages:
+    def _dm_update(self, text, chat_id=12345):
+        return {
+            "update_id": 1,
+            "message": {
+                "message_id": 100,
+                "from": {"id": 67890, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": chat_id, "type": "private"},
+                "text": text,
+            },
+        }
+
+    def test_custom_start_message(self, monkeypatch):
+        monkeypatch.setenv("TELEGRAM_TOKEN", "fake-token")
+        monkeypatch.setenv("APP_ENV", "development")
+        agent = AsyncMock()
+        mock_bot = AsyncMock()
+
+        with patch(f"{ROUTER_MODULE}.AsyncTeleBot", return_value=mock_bot):
+            client = _build_telegram_client(agent=agent, start_message="Welcome aboard!")
+            resp = client.post("/telegram/webhook", json=self._dm_update("/start"))
+
+        assert resp.status_code == 200
+        agent.arun.assert_not_called()
+        sent_text = mock_bot.send_message.call_args[0][1]
+        assert sent_text == "Welcome aboard!"
+
+    def test_custom_help_message(self, monkeypatch):
+        monkeypatch.setenv("TELEGRAM_TOKEN", "fake-token")
+        monkeypatch.setenv("APP_ENV", "development")
+        agent = AsyncMock()
+        mock_bot = AsyncMock()
+
+        with patch(f"{ROUTER_MODULE}.AsyncTeleBot", return_value=mock_bot):
+            client = _build_telegram_client(agent=agent, help_message="Ask me anything!")
+            resp = client.post("/telegram/webhook", json=self._dm_update("/help"))
+
+        assert resp.status_code == 200
+        agent.arun.assert_not_called()
+        sent_text = mock_bot.send_message.call_args[0][1]
+        assert sent_text == "Ask me anything!"
+
+    def test_custom_error_message(self, monkeypatch):
+        monkeypatch.setenv("TELEGRAM_TOKEN", "fake-token")
+        monkeypatch.setenv("APP_ENV", "development")
+
+        mock_response = MagicMock()
+        mock_response.status = "ERROR"
+        mock_response.content = "Internal error"
+
+        agent = AsyncMock()
+        agent.arun = AsyncMock(return_value=mock_response)
+        mock_bot = AsyncMock()
+
+        with patch(f"{ROUTER_MODULE}.AsyncTeleBot", return_value=mock_bot):
+            client = _build_telegram_client(agent=agent, error_message="Oops! Something broke.")
+            resp = client.post(
+                "/telegram/webhook",
+                json=self._dm_update("trigger error"),
+            )
+
+        assert resp.status_code == 200
+        send_calls = mock_bot.send_message.call_args_list
+        sent_texts = [call[0][1] for call in send_calls]
+        assert any("Oops!" in t for t in sent_texts)
+
+
+class TestTeamWorkflowProcessing:
+    def _text_update(self, text="Hello"):
+        return {
+            "update_id": 1,
+            "message": {
+                "message_id": 100,
+                "from": {"id": 67890, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 12345, "type": "private"},
+                "text": text,
+            },
+        }
+
+    def test_team_arun_called(self, monkeypatch):
+        monkeypatch.setenv("TELEGRAM_TOKEN", "fake-token")
+        monkeypatch.setenv("APP_ENV", "development")
+
+        mock_response = MagicMock()
+        mock_response.status = "COMPLETED"
+        mock_response.content = "Team reply"
+        mock_response.reasoning_content = None
+        mock_response.images = None
+
+        team = AsyncMock()
+        team.arun = AsyncMock(return_value=mock_response)
+        mock_bot = AsyncMock()
+
+        with patch(f"{ROUTER_MODULE}.AsyncTeleBot", return_value=mock_bot):
+            client = _build_telegram_client(team=team)
+            resp = client.post("/telegram/webhook", json=self._text_update("Hello team"))
+
+        assert resp.status_code == 200
+        team.arun.assert_called_once()
+        assert team.arun.call_args[0][0] == "Hello team"
+        assert team.arun.call_args[1]["session_id"] == "tg:12345"
+        mock_bot.send_message.assert_called_with(12345, "Team reply", reply_to_message_id=None)
+
+    def test_workflow_arun_called(self, monkeypatch):
+        monkeypatch.setenv("TELEGRAM_TOKEN", "fake-token")
+        monkeypatch.setenv("APP_ENV", "development")
+
+        mock_response = MagicMock()
+        mock_response.status = "COMPLETED"
+        mock_response.content = "Workflow reply"
+        mock_response.reasoning_content = None
+        mock_response.images = None
+
+        workflow = AsyncMock()
+        workflow.arun = AsyncMock(return_value=mock_response)
+        mock_bot = AsyncMock()
+
+        with patch(f"{ROUTER_MODULE}.AsyncTeleBot", return_value=mock_bot):
+            client = _build_telegram_client(workflow=workflow)
+            resp = client.post("/telegram/webhook", json=self._text_update("Hello workflow"))
+
+        assert resp.status_code == 200
+        workflow.arun.assert_called_once()
+        assert workflow.arun.call_args[0][0] == "Hello workflow"
+        mock_bot.send_message.assert_called_with(12345, "Workflow reply", reply_to_message_id=None)

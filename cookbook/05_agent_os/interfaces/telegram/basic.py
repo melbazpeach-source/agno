@@ -1,34 +1,36 @@
 from agno.agent import Agent
 from agno.db.sqlite import SqliteDb
-from agno.models.openai import OpenAIChat
+from agno.models.google import Gemini
 from agno.os.app import AgentOS
 from agno.os.interfaces.telegram import Telegram
 
-agent_db = SqliteDb(db_file="tmp/persistent_memory.db")
-basic_agent = Agent(
-    name="Basic Agent",
-    model=OpenAIChat(id="gpt-4o"),
+agent_db = SqliteDb(session_table="telegram_sessions", db_file="tmp/telegram_basic.db")
+
+telegram_agent = Agent(
+    name="Telegram Bot",
+    model=Gemini(id="gemini-2.5-pro"),
     db=agent_db,
+    instructions=[
+        "You are a helpful assistant on Telegram.",
+        "Keep responses concise and friendly.",
+        "When in a group, you respond only when mentioned with @.",
+    ],
     add_history_to_context=True,
     num_history_runs=3,
     add_datetime_to_context=True,
     markdown=True,
 )
 
-
-# Setup our AgentOS app
 agent_os = AgentOS(
-    agents=[basic_agent],
-    interfaces=[Telegram(agent=basic_agent)],
+    agents=[telegram_agent],
+    interfaces=[
+        Telegram(
+            agent=telegram_agent,
+            reply_to_mentions_only=True,
+        )
+    ],
 )
 app = agent_os.get_app()
 
-
 if __name__ == "__main__":
-    """Run your AgentOS.
-
-    You can see the configuration and available apps at:
-    http://localhost:7777/config
-
-    """
     agent_os.serve(app="basic:app", reload=True)

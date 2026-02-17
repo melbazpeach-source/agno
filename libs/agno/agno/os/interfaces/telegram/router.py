@@ -46,6 +46,11 @@ class ParsedMessage(NamedTuple):
     document_meta: Optional[dict]
 
 
+DEFAULT_START_MESSAGE = "Hello! I'm ready to help. Send me a message to get started."
+DEFAULT_HELP_MESSAGE = "Send me text, photos, voice notes, videos, or documents and I'll help you with them."
+DEFAULT_ERROR_MESSAGE = "Sorry, there was an error processing your message. Please try again later."
+
+
 def attach_routes(
     router: APIRouter,
     agent: Optional[Union[Agent, RemoteAgent]] = None,
@@ -53,6 +58,9 @@ def attach_routes(
     workflow: Optional[Union[Workflow, RemoteWorkflow]] = None,
     reply_to_mentions_only: bool = True,
     reply_to_bot_messages: bool = True,
+    start_message: str = DEFAULT_START_MESSAGE,
+    help_message: str = DEFAULT_HELP_MESSAGE,
+    error_message: str = DEFAULT_ERROR_MESSAGE,
 ) -> APIRouter:
     if agent is None and team is None and workflow is None:
         raise ValueError("Either agent, team, or workflow must be provided.")
@@ -191,12 +199,11 @@ def attach_routes(
             await bot.send_message(chat_id, f"[{i}/{len(chunks)}] {chunk}", reply_to_message_id=reply_id)
 
     def _resolve_media_data(item: Any) -> Optional[Any]:
-        """Extract sendable data from a media item.
-        Returns URL directly (Telegram handles download) or raw bytes via get_content_bytes().
-        """
-        if item.url:
-            return item.url
-        return item.get_content_bytes()
+        url = getattr(item, "url", None)
+        if url:
+            return url
+        get_bytes = getattr(item, "get_content_bytes", None)
+        return get_bytes() if callable(get_bytes) else None
 
     async def _send_response_media(response: RunOutput, chat_id: int, reply_to: Optional[int]) -> bool:
         """Send all media items from the response. Caption goes on the first item only."""
@@ -283,18 +290,19 @@ def attach_routes(
             return
 
         try:
+            if message.get("from", {}).get("is_bot"):
+                return
+
             chat_type = message.get("chat", {}).get("type", "private")
             is_group = chat_type in TG_GROUP_CHAT_TYPES
             incoming_message_id = message.get("message_id")
 
             text = message.get("text", "")
             if text.startswith("/start"):
-                await bot.send_message(chat_id, "Hello! I'm ready to help. Send me a message to get started.")
+                await bot.send_message(chat_id, start_message)
                 return
             if text.startswith("/help"):
-                await bot.send_message(
-                    chat_id, "Send me text, photos, voice notes, videos, or documents and I'll help you with them."
-                )
+                await bot.send_message(chat_id, help_message)
                 return
 
             if is_group:
@@ -356,7 +364,7 @@ def attach_routes(
             if response.status == "ERROR":
                 await _send_text_chunked(
                     chat_id,
-                    "Sorry, there was an error processing your message. Please try again later.",
+                    error_message,
                     reply_to_message_id=reply_to,
                 )
                 log_error(response.content)
@@ -380,9 +388,7 @@ def attach_routes(
         except Exception as e:
             log_error(f"Error processing message: {e}")
             try:
-                await _send_text_chunked(
-                    chat_id, "Sorry, there was an error processing your message. Please try again later."
-                )
+                await _send_text_chunked(chat_id, error_message)
             except Exception as send_error:
                 log_error(f"Error sending error message: {send_error}")
 
