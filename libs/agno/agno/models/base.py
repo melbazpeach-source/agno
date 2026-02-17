@@ -1403,6 +1403,26 @@ class Model(ABC):
                             else:
                                 delattr(run_response, "_current_model_type")
 
+                    # Accumulate metrics for this streamed iteration
+                    if run_response is not None and assistant_message.metrics is not None:
+                        from agno.metrics import accumulate_model_metrics
+
+                        _stream_model_response = ModelResponse()
+                        _stream_model_response.response_usage = Metrics(
+                            input_tokens=assistant_message.metrics.input_tokens,
+                            output_tokens=assistant_message.metrics.output_tokens,
+                            total_tokens=assistant_message.metrics.total_tokens,
+                            audio_input_tokens=assistant_message.metrics.audio_input_tokens,
+                            audio_output_tokens=assistant_message.metrics.audio_output_tokens,
+                            audio_total_tokens=assistant_message.metrics.audio_total_tokens,
+                            cache_read_tokens=assistant_message.metrics.cache_read_tokens,
+                            cache_write_tokens=assistant_message.metrics.cache_write_tokens,
+                            reasoning_tokens=assistant_message.metrics.reasoning_tokens,
+                            time_to_first_token=assistant_message.metrics.time_to_first_token,
+                            provider_metrics=assistant_message.metrics.provider_metrics,
+                        )
+                        accumulate_model_metrics(_stream_model_response, self, model_type, run_response)
+
                 else:
                     # Initialize message metrics and start timer before model call
                     assistant_message.metrics = Metrics()
@@ -1527,29 +1547,6 @@ class Model(ABC):
                 # No tool calls or finished processing them
                 break
 
-            # Accumulate metrics at the end of the stream if run_response is provided
-            if run_response is not None and assistant_message.metrics is not None:
-                from agno.metrics import accumulate_model_metrics
-
-                # Get model_type from run_response context if available, otherwise default to "model"
-                model_type = getattr(run_response, "_current_model_type", "model")
-
-                # Create a ModelResponse with the metrics from the assistant message
-                model_response_with_metrics = ModelResponse()
-                model_response_with_metrics.response_usage = Metrics(
-                    input_tokens=assistant_message.metrics.input_tokens,
-                    output_tokens=assistant_message.metrics.output_tokens,
-                    total_tokens=assistant_message.metrics.total_tokens,
-                    audio_input_tokens=assistant_message.metrics.audio_input_tokens,
-                    audio_output_tokens=assistant_message.metrics.audio_output_tokens,
-                    audio_total_tokens=assistant_message.metrics.audio_total_tokens,
-                    cache_read_tokens=assistant_message.metrics.cache_read_tokens,
-                    cache_write_tokens=assistant_message.metrics.cache_write_tokens,
-                    reasoning_tokens=assistant_message.metrics.reasoning_tokens,
-                    time_to_first_token=assistant_message.metrics.time_to_first_token,
-                    provider_metrics=assistant_message.metrics.provider_metrics,
-                )
-                accumulate_model_metrics(model_response_with_metrics, self, model_type, run_response)
 
             log_debug(f"{self.get_provider()} Response Stream End", center=True, symbol="-")
 
@@ -1704,6 +1701,26 @@ class Model(ABC):
                             else:
                                 delattr(run_response, "_current_model_type")
 
+                    # Accumulate metrics for this streamed iteration
+                    if run_response is not None and assistant_message.metrics is not None:
+                        from agno.metrics import accumulate_model_metrics
+
+                        _stream_model_response = ModelResponse()
+                        _stream_model_response.response_usage = Metrics(
+                            input_tokens=assistant_message.metrics.input_tokens,
+                            output_tokens=assistant_message.metrics.output_tokens,
+                            total_tokens=assistant_message.metrics.total_tokens,
+                            audio_input_tokens=assistant_message.metrics.audio_input_tokens,
+                            audio_output_tokens=assistant_message.metrics.audio_output_tokens,
+                            audio_total_tokens=assistant_message.metrics.audio_total_tokens,
+                            cache_read_tokens=assistant_message.metrics.cache_read_tokens,
+                            cache_write_tokens=assistant_message.metrics.cache_write_tokens,
+                            reasoning_tokens=assistant_message.metrics.reasoning_tokens,
+                            time_to_first_token=assistant_message.metrics.time_to_first_token,
+                            provider_metrics=assistant_message.metrics.provider_metrics,
+                        )
+                        accumulate_model_metrics(_stream_model_response, self, model_type, run_response)
+
                 else:
                     # Initialize message metrics and start timer before model call
                     assistant_message.metrics = Metrics()
@@ -1828,29 +1845,6 @@ class Model(ABC):
                 # No tool calls or finished processing them
                 break
 
-            # Accumulate metrics at the end of the stream if run_response is provided
-            if run_response is not None and assistant_message.metrics is not None:
-                from agno.metrics import accumulate_model_metrics
-
-                # Get model_type from run_response context if available, otherwise default to "model"
-                model_type = getattr(run_response, "_current_model_type", "model")
-
-                # Create a ModelResponse with the metrics from the assistant message
-                model_response_with_metrics = ModelResponse()
-                model_response_with_metrics.response_usage = Metrics(
-                    input_tokens=assistant_message.metrics.input_tokens,
-                    output_tokens=assistant_message.metrics.output_tokens,
-                    total_tokens=assistant_message.metrics.total_tokens,
-                    audio_input_tokens=assistant_message.metrics.audio_input_tokens,
-                    audio_output_tokens=assistant_message.metrics.audio_output_tokens,
-                    audio_total_tokens=assistant_message.metrics.audio_total_tokens,
-                    cache_read_tokens=assistant_message.metrics.cache_read_tokens,
-                    cache_write_tokens=assistant_message.metrics.cache_write_tokens,
-                    reasoning_tokens=assistant_message.metrics.reasoning_tokens,
-                    time_to_first_token=assistant_message.metrics.time_to_first_token,
-                    provider_metrics=assistant_message.metrics.provider_metrics,
-                )
-                accumulate_model_metrics(model_response_with_metrics, self, model_type, run_response)
 
             log_debug(f"{self.get_provider()} Async Response Stream End", center=True, symbol="-")
 

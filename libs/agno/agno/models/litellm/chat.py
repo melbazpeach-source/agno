@@ -515,9 +515,19 @@ class LiteLLM(Model):
         if isinstance(response_usage, dict):
             metrics.input_tokens = response_usage.get("prompt_tokens") or 0
             metrics.output_tokens = response_usage.get("completion_tokens") or 0
+            prompt_details = response_usage.get("prompt_tokens_details")
+            completion_details = response_usage.get("completion_tokens_details")
+            if prompt_details and isinstance(prompt_details, dict):
+                metrics.cache_read_tokens = prompt_details.get("cached_tokens", 0) or 0
+            if completion_details and isinstance(completion_details, dict):
+                metrics.reasoning_tokens = completion_details.get("reasoning_tokens", 0) or 0
         else:
             metrics.input_tokens = response_usage.prompt_tokens or 0
             metrics.output_tokens = response_usage.completion_tokens or 0
+            if hasattr(response_usage, "prompt_tokens_details") and response_usage.prompt_tokens_details:
+                metrics.cache_read_tokens = getattr(response_usage.prompt_tokens_details, "cached_tokens", 0) or 0
+            if hasattr(response_usage, "completion_tokens_details") and response_usage.completion_tokens_details:
+                metrics.reasoning_tokens = getattr(response_usage.completion_tokens_details, "reasoning_tokens", 0) or 0
 
         metrics.total_tokens = metrics.input_tokens + metrics.output_tokens
 

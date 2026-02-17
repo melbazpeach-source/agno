@@ -470,6 +470,7 @@ def _run(
                     session=agent_session,
                     user_id=user_id,
                     existing_future=learning_future,
+                    run_response=run_response,
                 )
 
                 # Start cultural knowledge creation in background thread
@@ -477,6 +478,7 @@ def _run(
                     agent,
                     run_messages=run_messages,
                     existing_future=cultural_knowledge_future,
+                    run_response=run_response,
                 )
 
                 raise_if_cancelled(run_response.run_id)  # type: ignore
@@ -840,6 +842,7 @@ def _run_stream(
                     session=agent_session,
                     user_id=user_id,
                     existing_future=learning_future,
+                    run_response=run_response,
                 )
 
                 # Start cultural knowledge creation in background thread
@@ -847,6 +850,7 @@ def _run_stream(
                     agent,
                     run_messages=run_messages,
                     existing_future=cultural_knowledge_future,
+                    run_response=run_response,
                 )
 
                 # Start the Run by yielding a RunStarted event
@@ -1515,6 +1519,7 @@ async def _arun(
                     session=agent_session,
                     user_id=user_id,
                     existing_task=learning_task,
+                    run_response=run_response,
                 )
 
                 # Start cultural knowledge creation as a background task (runs concurrently with the main execution)
@@ -1522,6 +1527,7 @@ async def _arun(
                     agent,
                     run_messages=run_messages,
                     existing_task=cultural_knowledge_task,
+                    run_response=run_response,
                 )
 
                 # Check for cancellation before model call
@@ -2004,6 +2010,7 @@ async def _arun_stream(
                     session=agent_session,
                     user_id=user_id,
                     existing_task=learning_task,
+                    run_response=run_response,
                 )
 
                 # Start cultural knowledge creation as a background task (runs concurrently with the main execution)
@@ -2011,6 +2018,7 @@ async def _arun_stream(
                     agent,
                     run_messages=run_messages,
                     existing_task=cultural_knowledge_task,
+                    run_response=run_response,
                 )
 
                 # 8. Reason about the task if reasoning is enabled

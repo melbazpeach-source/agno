@@ -220,7 +220,7 @@ class BaseRunOutputEvent:
 
         metrics = data.pop("metrics", None)
         if metrics:
-            data["metrics"] = Metrics(**metrics)
+            data["metrics"] = Metrics.from_dict(metrics)
 
         session_summary = data.pop("session_summary", None)
         if session_summary:

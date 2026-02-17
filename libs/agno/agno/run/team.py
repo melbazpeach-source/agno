@@ -824,7 +824,7 @@ class TeamRunOutput:
 
         metrics = data.pop("metrics", None)
         if metrics:
-            metrics = Metrics(**metrics)
+            metrics = Metrics.from_dict(metrics)
 
         citations = data.pop("citations", None)
         citations = Citations.model_validate(citations) if citations else None

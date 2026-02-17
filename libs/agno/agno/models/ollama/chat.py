@@ -449,4 +449,17 @@ class Ollama(Model):
         metrics.output_tokens = output_tokens if output_tokens is not None else 0
         metrics.total_tokens = metrics.input_tokens + metrics.output_tokens
 
+        # Capture Ollama timing metrics
+        provider_metrics: Dict[str, Any] = {}
+        if response.get("total_duration") is not None:
+            provider_metrics["total_duration"] = response["total_duration"]
+        if response.get("load_duration") is not None:
+            provider_metrics["load_duration"] = response["load_duration"]
+        if response.get("prompt_eval_duration") is not None:
+            provider_metrics["prompt_eval_duration"] = response["prompt_eval_duration"]
+        if response.get("eval_duration") is not None:
+            provider_metrics["eval_duration"] = response["eval_duration"]
+        if provider_metrics:
+            metrics.provider_metrics = provider_metrics
+
         return metrics

@@ -170,6 +170,10 @@ class ToolCallMetrics:
                 except (ValueError, TypeError):
                     metrics_data["end_time"] = None
 
+        # Filter to valid dataclass fields only
+        valid_fields = {f.name for f in dc_fields(cls)}
+        metrics_data = {k: v for k, v in metrics_data.items() if k in valid_fields}
+
         return cls(**metrics_data)
 
 
@@ -627,6 +631,63 @@ def accumulate_model_metrics(
         if run_response.metrics.provider_metrics is None:
             run_response.metrics.provider_metrics = {}
         run_response.metrics.provider_metrics.update(usage.provider_metrics)
+
+
+def accumulate_eval_metrics(
+    eval_response: "RunOutput",
+    run_response: "Union[RunOutput, TeamRunOutput]",
+) -> None:
+    """Accumulate eval model metrics from an evaluator's RunOutput into the original run_response.
+
+    This merges the evaluator agent's metrics (tracked in its own RunOutput) back into the
+    original agent's run_output under "eval_model" keys in details.
+
+    Args:
+        eval_response: The RunOutput from the evaluator agent's run
+        run_response: The original agent's RunOutput to accumulate eval metrics into
+    """
+    if eval_response.metrics is None:
+        return
+
+    eval_metrics = eval_response.metrics
+
+    # Initialize run_response.metrics if None
+    if run_response.metrics is None:
+        run_response.metrics = Metrics()
+        run_response.metrics.start_timer()
+
+    if run_response.metrics.details is None:
+        run_response.metrics.details = {}
+
+    # Copy over model details from eval under "eval_<model_type>" keys
+    if eval_metrics.details:
+        for model_type, model_metrics_list in eval_metrics.details.items():
+            eval_key = f"eval_{model_type}" if not model_type.startswith("eval_") else model_type
+            if eval_key not in run_response.metrics.details:
+                run_response.metrics.details[eval_key] = []
+            run_response.metrics.details[eval_key].extend(model_metrics_list)
+
+    # Accumulate top-level token counts
+    run_response.metrics.input_tokens += eval_metrics.input_tokens
+    run_response.metrics.output_tokens += eval_metrics.output_tokens
+    run_response.metrics.total_tokens += eval_metrics.total_tokens
+    run_response.metrics.audio_input_tokens += eval_metrics.audio_input_tokens
+    run_response.metrics.audio_output_tokens += eval_metrics.audio_output_tokens
+    run_response.metrics.audio_total_tokens += eval_metrics.audio_total_tokens
+    run_response.metrics.cache_read_tokens += eval_metrics.cache_read_tokens
+    run_response.metrics.cache_write_tokens += eval_metrics.cache_write_tokens
+    run_response.metrics.reasoning_tokens += eval_metrics.reasoning_tokens
+
+    # Accumulate cost
+    if eval_metrics.cost is not None:
+        run_response.metrics.cost = (run_response.metrics.cost or 0) + eval_metrics.cost
+
+    # Accumulate eval duration
+    if eval_metrics.duration is not None:
+        if run_response.metrics.additional_metrics is None:
+            run_response.metrics.additional_metrics = {}
+        existing = run_response.metrics.additional_metrics.get("eval_duration", 0)
+        run_response.metrics.additional_metrics["eval_duration"] = existing + eval_metrics.duration
 
 
 # Backward compatibility aliases

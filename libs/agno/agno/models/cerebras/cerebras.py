@@ -594,4 +594,13 @@ class Cerebras(Model):
         metrics.output_tokens = response_usage.completion_tokens or 0
         metrics.total_tokens = metrics.input_tokens + metrics.output_tokens
 
+        # Capture Cerebras timing metrics if available
+        provider_metrics: Dict[str, Any] = {}
+        if hasattr(response_usage, "time_system") and response_usage.time_system is not None:
+            provider_metrics["time_system"] = response_usage.time_system
+        if hasattr(response_usage, "time_prompt") and response_usage.time_prompt is not None:
+            provider_metrics["time_prompt"] = response_usage.time_prompt
+        if provider_metrics:
+            metrics.provider_metrics = provider_metrics
+
         return metrics

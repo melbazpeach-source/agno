@@ -359,7 +359,7 @@ class StepOutput:
                 # Convert dict to Metrics object
                 from agno.models.metrics import Metrics
 
-                metrics = Metrics(**metrics_data)
+                metrics = Metrics.from_dict(metrics_data)
             else:
                 # Already a Metrics object
                 metrics = metrics_data
@@ -420,7 +420,7 @@ class StepMetrics:
                 # Convert dict to Metrics object
                 from agno.models.metrics import Metrics
 
-                metrics = Metrics(**metrics_data)
+                metrics = Metrics.from_dict(metrics_data)
             else:
                 # Already a Metrics object
                 metrics = metrics_data

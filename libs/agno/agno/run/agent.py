@@ -844,7 +844,7 @@ class RunOutput:
 
         metrics = data.pop("metrics", None)
         if metrics:
-            metrics = Metrics(**metrics)
+            metrics = Metrics.from_dict(metrics)
 
         additional_input = data.pop("additional_input", None)
 

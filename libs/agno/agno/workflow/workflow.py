@@ -33,7 +33,7 @@ from agno.db.utils import db_from_dict
 from agno.exceptions import InputCheckError, OutputCheckError, RunCancelledException
 from agno.media import Audio, File, Image, Video
 from agno.models.message import Message
-from agno.models.metrics import Metrics
+from agno.models.metrics import Metrics, ModelMetrics, SessionMetrics
 from agno.registry import Registry
 from agno.run import RunContext, RunStatus
 from agno.run.agent import RunContentEvent, RunEvent, RunOutput
@@ -4549,36 +4549,115 @@ class Workflow:
 
         return session_metrics
 
-    def _get_session_metrics(self, session: WorkflowSession) -> Metrics:
+    def _get_session_metrics(self, session: WorkflowSession) -> SessionMetrics:
         """Get existing session metrics from the database"""
         if session.session_data and "session_metrics" in session.session_data:
             session_metrics_from_db = session.session_data.get("session_metrics")
             if session_metrics_from_db is not None:
                 if isinstance(session_metrics_from_db, dict):
-                    return Metrics(**session_metrics_from_db)
-                elif isinstance(session_metrics_from_db, Metrics):
+                    return SessionMetrics.from_dict(session_metrics_from_db)
+                elif isinstance(session_metrics_from_db, SessionMetrics):
                     return session_metrics_from_db
-        return Metrics()
+                elif isinstance(session_metrics_from_db, Metrics):
+                    # Convert legacy Metrics to SessionMetrics
+                    return SessionMetrics(
+                        input_tokens=session_metrics_from_db.input_tokens,
+                        output_tokens=session_metrics_from_db.output_tokens,
+                        total_tokens=session_metrics_from_db.total_tokens,
+                        audio_input_tokens=session_metrics_from_db.audio_input_tokens,
+                        audio_output_tokens=session_metrics_from_db.audio_output_tokens,
+                        audio_total_tokens=session_metrics_from_db.audio_total_tokens,
+                        cache_read_tokens=session_metrics_from_db.cache_read_tokens,
+                        cache_write_tokens=session_metrics_from_db.cache_write_tokens,
+                        reasoning_tokens=session_metrics_from_db.reasoning_tokens,
+                    )
+        return SessionMetrics()
 
     def _update_session_metrics(self, session: WorkflowSession, workflow_run_response: WorkflowRunOutput):
-        """Calculate and update session metrics"""
+        """Calculate and update session metrics - convert run Metrics to SessionMetrics."""
         # Get existing session metrics
         session_metrics = self._get_session_metrics(session=session)
 
         # If workflow has metrics, convert and add them to session metrics
         if workflow_run_response.metrics:
-            run_session_metrics = self._calculate_session_metrics_from_workflow_metrics(workflow_run_response.metrics)  # type: ignore[arg-type]
+            run_metrics = self._calculate_session_metrics_from_workflow_metrics(workflow_run_response.metrics)  # type: ignore[arg-type]
 
-            session_metrics += run_session_metrics
+            # Accumulate token metrics
+            session_metrics.input_tokens += run_metrics.input_tokens
+            session_metrics.output_tokens += run_metrics.output_tokens
+            session_metrics.total_tokens += run_metrics.total_tokens
+            session_metrics.audio_input_tokens += run_metrics.audio_input_tokens
+            session_metrics.audio_output_tokens += run_metrics.audio_output_tokens
+            session_metrics.audio_total_tokens += run_metrics.audio_total_tokens
+            session_metrics.cache_read_tokens += run_metrics.cache_read_tokens
+            session_metrics.cache_write_tokens += run_metrics.cache_write_tokens
+            session_metrics.reasoning_tokens += run_metrics.reasoning_tokens
 
-        session_metrics.time_to_first_token = None
+            # Accumulate cost
+            if run_metrics.cost is not None:
+                session_metrics.cost = (session_metrics.cost or 0) + run_metrics.cost
 
-        # Store updated session metrics - CONVERT TO DICT FOR JSON SERIALIZATION
+            # Merge provider_metrics
+            if run_metrics.provider_metrics is not None:
+                if session_metrics.provider_metrics is None:
+                    session_metrics.provider_metrics = {}
+                session_metrics.provider_metrics.update(run_metrics.provider_metrics)
+
+            # Merge additional_metrics
+            if run_metrics.additional_metrics is not None:
+                if session_metrics.additional_metrics is None:
+                    session_metrics.additional_metrics = {}
+                session_metrics.additional_metrics.update(run_metrics.additional_metrics)
+
+            # Calculate average duration
+            session_metrics.total_runs += 1
+            if run_metrics.duration is not None:
+                if session_metrics.average_duration is None:
+                    session_metrics.average_duration = run_metrics.duration
+                else:
+                    total_duration = (
+                        session_metrics.average_duration * (session_metrics.total_runs - 1) + run_metrics.duration
+                    )
+                    session_metrics.average_duration = total_duration / session_metrics.total_runs
+
+            # Track per-model metrics from run_metrics.details
+            if run_metrics.details:
+                if session_metrics.details is None:
+                    session_metrics.details = []
+
+                details_dict: Dict[Tuple[str, str], ModelMetrics] = {
+                    (model_metric.provider, model_metric.id): model_metric for model_metric in session_metrics.details
+                }
+
+                for model_type, model_metrics_list in run_metrics.details.items():
+                    for model_metric in model_metrics_list:
+                        key = (model_metric.provider, model_metric.id)
+
+                        if key not in details_dict:
+                            details_dict[key] = ModelMetrics.for_session(
+                                model_metric, duration=run_metrics.duration, total_runs=1
+                            )
+                        else:
+                            existing = details_dict[key]
+                            existing.accumulate(model_metric)
+                            existing.total_runs += 1
+                            if run_metrics.duration is not None:
+                                if existing.average_duration is None:
+                                    existing.average_duration = run_metrics.duration
+                                else:
+                                    total_duration = (
+                                        existing.average_duration * (existing.total_runs - 1) + run_metrics.duration
+                                    )
+                                    existing.average_duration = total_duration / existing.total_runs
+
+                session_metrics.details = list(details_dict.values())
+
+        # Store updated session metrics
         if not session.session_data:
             session.session_data = {}
         session.session_data["session_metrics"] = session_metrics.to_dict()
 
-    async def aget_session_metrics(self, session_id: Optional[str] = None) -> Optional[Metrics]:
+    async def aget_session_metrics(self, session_id: Optional[str] = None) -> Optional[SessionMetrics]:
         """Get the session metrics for the given session ID and user ID."""
         session_id = session_id or self.session_id
         if session_id is None:
@@ -4590,7 +4669,7 @@ class Workflow:
 
         return self._get_session_metrics(session=session)
 
-    def get_session_metrics(self, session_id: Optional[str] = None) -> Optional[Metrics]:
+    def get_session_metrics(self, session_id: Optional[str] = None) -> Optional[SessionMetrics]:
         """Get the session metrics for the given session ID and user ID."""
         session_id = session_id or self.session_id
         if session_id is None:

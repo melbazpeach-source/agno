@@ -4,6 +4,7 @@ from time import time
 from typing import Any, Dict, List, Optional
 
 from agno.media import Audio, File, Image, Video
+from agno.metrics import ToolCallMetrics
 from agno.models.message import Citations
 from agno.models.metrics import Metrics
 from agno.tools.function import UserInputField
@@ -31,7 +32,7 @@ class ToolExecution:
     tool_args: Optional[Dict[str, Any]] = None
     tool_call_error: Optional[bool] = None
     result: Optional[str] = None
-    metrics: Optional[Metrics] = None
+    metrics: Optional[ToolCallMetrics] = None
 
     # In the case where a tool call creates a run of an agent/team/workflow
     child_run_id: Optional[str] = None
@@ -92,7 +93,7 @@ class ToolExecution:
             external_execution_required=data.get("external_execution_required"),
             external_execution_silent=data.get("external_execution_silent"),
             approval_type=data.get("approval_type"),
-            metrics=Metrics(**(data.get("metrics", {}) or {})),
+            metrics=ToolCallMetrics.from_dict(data["metrics"]) if data.get("metrics") else None,
             **{"created_at": data["created_at"]} if "created_at" in data else {},
         )
 
@@ -213,7 +214,7 @@ class ModelResponse:
         if data.get("response_usage") and isinstance(data["response_usage"], dict):
             from agno.models.metrics import Metrics
 
-            data["response_usage"] = Metrics(**data["response_usage"])
+            data["response_usage"] = Metrics.from_dict(data["response_usage"])
 
         return cls(**data)
 

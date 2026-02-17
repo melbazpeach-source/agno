@@ -259,25 +259,34 @@ async def aget_user_memories(agent: Agent, user_id: Optional[str] = None) -> Opt
 def make_cultural_knowledge(
     agent: Agent,
     run_messages: RunMessages,
+    run_response: Optional[Any] = None,
 ):
     if run_messages.user_message is not None and agent.culture_manager is not None and agent.update_cultural_knowledge:
         log_debug("Creating cultural knowledge.")
-        agent.culture_manager.create_cultural_knowledge(message=run_messages.user_message.get_content_string())
+        agent.culture_manager.create_cultural_knowledge(
+            message=run_messages.user_message.get_content_string(),
+            run_response=run_response,
+        )
 
 
 async def acreate_cultural_knowledge(
     agent: Agent,
     run_messages: RunMessages,
+    run_response: Optional[Any] = None,
 ):
     if run_messages.user_message is not None and agent.culture_manager is not None and agent.update_cultural_knowledge:
         log_debug("Creating cultural knowledge.")
-        await agent.culture_manager.acreate_cultural_knowledge(message=run_messages.user_message.get_content_string())
+        await agent.culture_manager.acreate_cultural_knowledge(
+            message=run_messages.user_message.get_content_string(),
+            run_response=run_response,
+        )
 
 
 async def astart_cultural_knowledge_task(
     agent: Agent,
     run_messages: RunMessages,
     existing_task: Optional[Task[None]],
+    run_response: Optional[Any] = None,
 ) -> Optional[Task[None]]:
     """Cancel any existing cultural knowledge task and start a new one if conditions are met.
 
@@ -285,6 +294,7 @@ async def astart_cultural_knowledge_task(
         agent: The Agent instance.
         run_messages: The run messages containing the user message.
         existing_task: An existing cultural knowledge task to cancel before starting a new one.
+        run_response: The run response for tracking culture model metrics.
 
     Returns:
         A new cultural knowledge task if conditions are met, None otherwise.
@@ -300,7 +310,7 @@ async def astart_cultural_knowledge_task(
     # Create new task if conditions are met
     if run_messages.user_message is not None and agent.culture_manager is not None and agent.update_cultural_knowledge:
         log_debug("Starting cultural knowledge creation in background task.")
-        return create_task(acreate_cultural_knowledge(agent, run_messages=run_messages))
+        return create_task(acreate_cultural_knowledge(agent, run_messages=run_messages, run_response=run_response))
 
     return None
 
@@ -309,6 +319,7 @@ def start_cultural_knowledge_future(
     agent: Agent,
     run_messages: RunMessages,
     existing_future: Optional[Future] = None,
+    run_response: Optional[Any] = None,
 ) -> Optional[Future]:
     """Cancel any existing cultural knowledge future and start a new one if conditions are met.
 
@@ -316,6 +327,7 @@ def start_cultural_knowledge_future(
         agent: The Agent instance.
         run_messages: The run messages containing the user message.
         existing_future: An existing cultural knowledge future to cancel before starting a new one.
+        run_response: The run response for tracking culture model metrics.
 
     Returns:
         A new cultural knowledge future if conditions are met, None otherwise.
@@ -328,7 +340,9 @@ def start_cultural_knowledge_future(
     # Create new future if conditions are met
     if run_messages.user_message is not None and agent.culture_manager is not None and agent.update_cultural_knowledge:
         log_debug("Starting cultural knowledge creation in background thread.")
-        return agent.background_executor.submit(make_cultural_knowledge, agent, run_messages=run_messages)
+        return agent.background_executor.submit(
+            make_cultural_knowledge, agent, run_messages=run_messages, run_response=run_response
+        )
 
     return None
 
@@ -373,6 +387,7 @@ def process_learnings(
     run_messages: RunMessages,
     session: AgentSession,
     user_id: Optional[str],
+    run_response: Optional[Any] = None,
 ) -> None:
     """Process learnings from conversation (runs in background thread)."""
     if agent._learning is None:
@@ -388,6 +403,7 @@ def process_learnings(
             session_id=session.session_id if session else None,
             agent_id=agent.id,
             team_id=agent.team_id,
+            run_response=run_response,
         )
         log_debug("Learning extraction completed.")
     except Exception as e:
@@ -399,6 +415,7 @@ async def aprocess_learnings(
     run_messages: RunMessages,
     session: AgentSession,
     user_id: Optional[str],
+    run_response: Optional[Any] = None,
 ) -> None:
     """Async process learnings from conversation."""
     if agent._learning is None:
@@ -412,6 +429,7 @@ async def aprocess_learnings(
             session_id=session.session_id if session else None,
             agent_id=agent.id,
             team_id=agent.team_id,
+            run_response=run_response,
         )
         log_debug("Learning extraction completed.")
     except Exception as e:
@@ -424,6 +442,7 @@ async def astart_learning_task(
     session: AgentSession,
     user_id: Optional[str],
     existing_task: Optional[Task] = None,
+    run_response: Optional[Any] = None,
 ) -> Optional[Task]:
     """Start learning extraction as async task.
 
@@ -433,6 +452,7 @@ async def astart_learning_task(
         session: The agent session.
         user_id: The user ID for learning extraction.
         existing_task: An existing task to cancel before starting a new one.
+        run_response: The run response for tracking learning model metrics.
 
     Returns:
         A new learning task if conditions are met, None otherwise.
@@ -454,6 +474,7 @@ async def astart_learning_task(
                 run_messages=run_messages,
                 session=session,
                 user_id=user_id,
+                run_response=run_response,
             )
         )
 
@@ -466,6 +487,7 @@ def start_learning_future(
     session: AgentSession,
     user_id: Optional[str],
     existing_future: Optional[Future] = None,
+    run_response: Optional[Any] = None,
 ) -> Optional[Future]:
     """Start learning extraction in background thread.
 
@@ -475,6 +497,7 @@ def start_learning_future(
         session: The agent session.
         user_id: The user ID for learning extraction.
         existing_future: An existing future to cancel before starting a new one.
+        run_response: The run response for tracking learning model metrics.
 
     Returns:
         A new learning future if conditions are met, None otherwise.
@@ -492,6 +515,7 @@ def start_learning_future(
             run_messages=run_messages,
             session=session,
             user_id=user_id,
+            run_response=run_response,
         )
 
     return None

@@ -487,4 +487,9 @@ class AzureAIFoundry(Model):
         metrics.output_tokens = response_usage.get("completion_tokens", 0)
         metrics.total_tokens = metrics.input_tokens + metrics.output_tokens
 
+        if prompt_details := response_usage.get("prompt_tokens_details"):
+            metrics.cache_read_tokens = prompt_details.get("cached_tokens", 0) or 0
+        if completion_details := response_usage.get("completion_tokens_details"):
+            metrics.reasoning_tokens = completion_details.get("reasoning_tokens", 0) or 0
+
         return metrics

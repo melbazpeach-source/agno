@@ -799,4 +799,7 @@ class AwsBedrock(Model):
         metrics.output_tokens = response_usage.get("outputTokens", 0) or 0
         metrics.total_tokens = metrics.input_tokens + metrics.output_tokens
 
+        metrics.cache_read_tokens = response_usage.get("cacheReadInputTokens", 0) or 0
+        metrics.cache_write_tokens = response_usage.get("cacheWriteInputTokens", 0) or 0
+
         return metrics
