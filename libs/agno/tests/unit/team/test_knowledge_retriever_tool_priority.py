@@ -7,8 +7,6 @@ the tool registration ignores the custom retriever.
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from agno.models.base import Function
 from agno.run.base import RunContext
 from agno.run.team import TeamRunOutput
