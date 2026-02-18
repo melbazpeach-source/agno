@@ -21,7 +21,12 @@ from agno.db.base import BaseDb
 from agno.exceptions import InputCheckError, OutputCheckError
 from agno.media import Audio, Image, Video
 from agno.media import File as FileMedia
-from agno.os.auth import get_auth_token_from_request, get_authentication_dependency, require_resource_access
+from agno.os.auth import (
+    get_auth_token_from_request,
+    get_authentication_dependency,
+    require_approval_resolved,
+    require_resource_access,
+)
 from agno.os.routers.agents.schema import AgentResponse
 from agno.os.schema import (
     BadRequestResponse,
@@ -480,12 +485,16 @@ def get_agent_router(
                 },
             },
             400: {"description": "Invalid JSON in tools field or invalid tool structure", "model": BadRequestResponse},
+            403: {"description": "Run has a pending admin approval and cannot be continued by the user yet."},
             404: {"description": "Agent not found", "model": NotFoundResponse},
             409: {
                 "description": "Run is not paused (e.g. run is already running, continued, or errored). Only PAUSED runs can be continued.",
             },
         },
-        dependencies=[Depends(require_resource_access("agents", "run", "agent_id"))],
+        dependencies=[
+            Depends(require_resource_access("agents", "run", "agent_id")),
+            Depends(require_approval_resolved(os.db)),
+        ],
     )
     async def continue_agent_run(
         agent_id: str,

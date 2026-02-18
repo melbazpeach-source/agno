@@ -55,3 +55,13 @@ class ApprovalCountResponse(BaseModel):
     """Response model for pending approval count."""
 
     count: int
+
+
+class ApprovalStatusResponse(BaseModel):
+    """Lightweight response model for polling approval status."""
+
+    approval_id: str
+    status: str
+    run_id: str
+    resolved_at: Optional[int] = None
+    resolved_by: Optional[str] = None
