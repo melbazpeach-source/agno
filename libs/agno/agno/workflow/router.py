@@ -83,10 +83,10 @@ class Router:
     # Router function or CEL expression that selects step(s) to execute (optional if using HITL)
     selector: Optional[
         Union[
-        Callable[[StepInput], Union[WorkflowSteps, List[WorkflowSteps]]],
-        Callable[[StepInput], Awaitable[Union[WorkflowSteps, List[WorkflowSteps]]]],
+            Callable[[StepInput], Union[WorkflowSteps, List[WorkflowSteps]]],
+            Callable[[StepInput], Awaitable[Union[WorkflowSteps, List[WorkflowSteps]]]],
             str,  # CEL expression returning step name
-    ]
+        ]
     ] = None
 
     name: Optional[str] = None

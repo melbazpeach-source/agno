@@ -716,6 +716,7 @@ class TestWorkflowRunOutputHITL:
         assert output.paused_step_index == 3
         assert output.paused_step_name == "final_step"
 
+
 # =============================================================================
 # UserInputField Tests
 # =============================================================================

@@ -1785,9 +1785,7 @@ class Workflow:
 
                     # Handle HITL pause if needed
                     if hitl_result.should_pause:
-                        apply_hitl_pause_state(
-                            workflow_run_response, i, step_name, collected_step_outputs, hitl_result
-                        )
+                        apply_hitl_pause_state(workflow_run_response, i, step_name, collected_step_outputs, hitl_result)
                         save_hitl_paused_session(self, session, workflow_run_response)
                         return workflow_run_response
 
@@ -2024,16 +2022,12 @@ class Workflow:
 
                     # Handle HITL pause if needed
                     if hitl_result.should_pause:
-                        apply_hitl_pause_state(
-                            workflow_run_response, i, step_name, collected_step_outputs, hitl_result
-                        )
+                        apply_hitl_pause_state(workflow_run_response, i, step_name, collected_step_outputs, hitl_result)
 
                         # Yield appropriate event based on requirement type
                         req = hitl_result.step_requirement
                         if req and req.requires_route_selection:
-                            paused_event = create_router_paused_event(
-                                workflow_run_response, step_name, i, hitl_result
-                            )
+                            paused_event = create_router_paused_event(workflow_run_response, step_name, i, hitl_result)
                         else:
                             paused_event = create_step_paused_event(
                                 workflow_run_response, step, step_name, i, hitl_result
@@ -2499,9 +2493,7 @@ class Workflow:
 
                     # Handle HITL pause if needed
                     if hitl_result.should_pause:
-                        apply_hitl_pause_state(
-                            workflow_run_response, i, step_name, collected_step_outputs, hitl_result
-                        )
+                        apply_hitl_pause_state(workflow_run_response, i, step_name, collected_step_outputs, hitl_result)
                         await asave_hitl_paused_session(self, workflow_session, workflow_run_response)
                         return workflow_run_response
 
@@ -2758,16 +2750,12 @@ class Workflow:
 
                     # Handle HITL pause if needed
                     if hitl_result.should_pause:
-                        apply_hitl_pause_state(
-                            workflow_run_response, i, step_name, collected_step_outputs, hitl_result
-                        )
+                        apply_hitl_pause_state(workflow_run_response, i, step_name, collected_step_outputs, hitl_result)
 
                         # Yield appropriate event based on requirement type
                         req = hitl_result.step_requirement
                         if req and req.requires_route_selection:
-                            paused_event = create_router_paused_event(
-                                workflow_run_response, step_name, i, hitl_result
-                            )
+                            paused_event = create_router_paused_event(workflow_run_response, step_name, i, hitl_result)
                         else:
                             paused_event = create_step_paused_event(
                                 workflow_run_response, step, step_name, i, hitl_result

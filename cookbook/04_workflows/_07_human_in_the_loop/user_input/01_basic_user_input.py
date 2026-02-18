@@ -118,7 +118,9 @@ if __name__ == "__main__":
     # Handle HITL pauses
     while run_output.is_paused:
         # Show paused step info
-        print(f"\n[PAUSED] Workflow paused at step {run_output.paused_step_index}: '{run_output.paused_step_name}'")
+        print(
+            f"\n[PAUSED] Workflow paused at step {run_output.paused_step_index}: '{run_output.paused_step_name}'"
+        )
 
         # Check for user input requirements
         for requirement in run_output.steps_requiring_user_input:

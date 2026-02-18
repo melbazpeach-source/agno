@@ -104,9 +104,21 @@ analyze_step = Step(name="analyze_request", executor=analyze_request)
 request_router = Router(
     name="request_router",
     choices=[
-        Step(name="handle_urgent", description="Handle urgent requests", executor=handle_urgent),
-        Step(name="handle_billing", description="Handle billing requests", executor=handle_billing),
-        Step(name="handle_general", description="Handle general requests", executor=handle_general),
+        Step(
+            name="handle_urgent",
+            description="Handle urgent requests",
+            executor=handle_urgent,
+        ),
+        Step(
+            name="handle_billing",
+            description="Handle billing requests",
+            executor=handle_billing,
+        ),
+        Step(
+            name="handle_general",
+            description="Handle general requests",
+            executor=handle_general,
+        ),
     ],
     selector=route_by_category,
     requires_confirmation=True,

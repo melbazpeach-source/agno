@@ -127,7 +127,9 @@ def main():
     print("=" * 60)
 
     # Initial run with streaming
-    event_stream = workflow.run("Process quarterly data", stream=True, stream_events=True)
+    event_stream = workflow.run(
+        "Process quarterly data", stream=True, stream_events=True
+    )
 
     # Process initial events
     process_event_stream(event_stream)
@@ -143,7 +145,9 @@ def main():
         print("\n[INFO] Continuing workflow with streaming...\n")
 
         # Continue with streaming
-        continue_stream = workflow.continue_run(run_output, stream=True, stream_events=True)
+        continue_stream = workflow.continue_run(
+            run_output, stream=True, stream_events=True
+        )
 
         # Process continuation events
         process_event_stream(continue_stream)
