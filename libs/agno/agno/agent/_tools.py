@@ -171,7 +171,19 @@ def get_tools(
         )
 
     # Add tools for accessing knowledge
-    if resolved_knowledge is not None and agent.search_knowledge:
+    # Custom knowledge_retriever takes priority over resolved_knowledge,
+    # matching the behavior in get_relevant_docs_from_knowledge().
+    if agent.knowledge_retriever is not None and agent.search_knowledge:
+        # Create search tool using custom knowledge_retriever
+        agent_tools.append(
+            _default_tools.create_knowledge_retriever_search_tool(
+                agent,
+                run_response=run_response,
+                run_context=run_context,
+                async_mode=False,
+            )
+        )
+    elif resolved_knowledge is not None and agent.search_knowledge:
         # Use knowledge protocol's get_tools method
         get_tools_fn = getattr(resolved_knowledge, "get_tools", None)
         if callable(get_tools_fn):
@@ -184,16 +196,6 @@ def get_tools(
                 agent=agent,
             )
             agent_tools.extend(knowledge_tools)
-    elif agent.knowledge_retriever is not None and agent.search_knowledge:
-        # Create search tool using custom knowledge_retriever
-        agent_tools.append(
-            _default_tools.create_knowledge_retriever_search_tool(
-                agent,
-                run_response=run_response,
-                run_context=run_context,
-                async_mode=False,
-            )
-        )
 
     if resolved_knowledge is not None and agent.update_knowledge:
         agent_tools.append(agent.add_to_knowledge)
@@ -303,7 +305,19 @@ async def aget_tools(
         )
 
     # Add tools for accessing knowledge
-    if resolved_knowledge is not None and agent.search_knowledge:
+    # Custom knowledge_retriever takes priority over resolved_knowledge,
+    # matching the behavior in aget_relevant_docs_from_knowledge().
+    if agent.knowledge_retriever is not None and agent.search_knowledge:
+        # Create search tool using custom knowledge_retriever
+        agent_tools.append(
+            _default_tools.create_knowledge_retriever_search_tool(
+                agent,
+                run_response=run_response,
+                run_context=run_context,
+                async_mode=True,
+            )
+        )
+    elif resolved_knowledge is not None and agent.search_knowledge:
         # Use knowledge protocol's get_tools method
         aget_tools_fn = getattr(resolved_knowledge, "aget_tools", None)
         get_tools_fn = getattr(resolved_knowledge, "get_tools", None)
@@ -328,16 +342,6 @@ async def aget_tools(
                 agent=agent,
             )
             agent_tools.extend(knowledge_tools)
-    elif agent.knowledge_retriever is not None and agent.search_knowledge:
-        # Create search tool using custom knowledge_retriever
-        agent_tools.append(
-            _default_tools.create_knowledge_retriever_search_tool(
-                agent,
-                run_response=run_response,
-                run_context=run_context,
-                async_mode=True,
-            )
-        )
 
     if resolved_knowledge is not None and agent.update_knowledge:
         agent_tools.append(agent.add_to_knowledge)
