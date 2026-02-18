@@ -95,8 +95,3 @@ if __name__ == "__main__":
 
         final_state = agent.get_session_state()
         console.print(f"\n[bold green]Final session state:[/] {final_state}")
-
-        if "AAPL" in final_state.get("watchlist", []):
-            console.print("[bold green]Session state survived the HITL round-trip![/]")
-        else:
-            console.print("[bold red]BUG: Session state was lost during HITL pause![/]")
