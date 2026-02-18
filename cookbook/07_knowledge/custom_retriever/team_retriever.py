@@ -63,20 +63,25 @@ def knowledge_retriever(
 
 def main():
     """Main function to demonstrate team usage with a custom knowledge retriever."""
-    # Create a member agent for the team
-    recipe_agent = Agent(
-        name="Recipe Agent",
-        role="Search for Thai recipes and provide detailed information",
+    # Create a member agent that summarizes recipes
+    summary_agent = Agent(
+        name="Summary Agent",
+        role="Summarize and format recipe information into clear, readable responses",
     )
 
     # Initialize team with custom knowledge retriever
+    # The team searches the knowledge base directly using the custom retriever,
+    # then delegates formatting tasks to the summary agent.
     team = Team(
         name="Recipe Team",
-        members=[recipe_agent],
+        members=[summary_agent],
         knowledge=knowledge,
         knowledge_retriever=knowledge_retriever,
         search_knowledge=True,
-        instructions="Search the knowledge base for information about Thai recipes",
+        instructions=[
+            "Always use the search_knowledge_base tool to find recipe information before delegating to members.",
+            "Delegate to the Summary Agent only for formatting the results.",
+        ],
     )
 
     # Example query
