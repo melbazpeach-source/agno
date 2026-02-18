@@ -670,6 +670,51 @@ class TestWorkflowRunOutputHITL:
         assert len(output.step_requirements) == 1
         assert output.step_requirements[0].step_id == "step-1"
 
+    def test_workflow_output_paused_step_info(self):
+        """Test paused_step_index and paused_step_name fields."""
+        output = WorkflowRunOutput(
+            run_id="run-1",
+            session_id="session-1",
+            workflow_name="test_workflow",
+            status=RunStatus.paused,
+            paused_step_index=2,
+            paused_step_name="process_data",
+        )
+
+        assert output.paused_step_index == 2
+        assert output.paused_step_name == "process_data"
+
+    def test_workflow_output_paused_step_info_serialization(self):
+        """Test serialization of paused_step_index and paused_step_name."""
+        output = WorkflowRunOutput(
+            run_id="run-1",
+            session_id="session-1",
+            workflow_name="test_workflow",
+            status=RunStatus.paused,
+            paused_step_index=1,
+            paused_step_name="confirm_step",
+        )
+
+        data = output.to_dict()
+
+        assert data["paused_step_index"] == 1
+        assert data["paused_step_name"] == "confirm_step"
+
+    def test_workflow_output_paused_step_info_deserialization(self):
+        """Test deserialization of paused_step_index and paused_step_name."""
+        data = {
+            "run_id": "run-1",
+            "session_id": "session-1",
+            "workflow_name": "test_workflow",
+            "status": RunStatus.paused.value,
+            "paused_step_index": 3,
+            "paused_step_name": "final_step",
+        }
+
+        output = WorkflowRunOutput.from_dict(data)
+
+        assert output.paused_step_index == 3
+        assert output.paused_step_name == "final_step"
 
 # =============================================================================
 # UserInputField Tests

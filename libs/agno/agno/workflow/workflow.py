@@ -1786,7 +1786,7 @@ class Workflow:
                     # Handle HITL pause if needed
                     if hitl_result.should_pause:
                         apply_hitl_pause_state(
-                            workflow_run_response, i, collected_step_outputs, hitl_result
+                            workflow_run_response, i, step_name, collected_step_outputs, hitl_result
                         )
                         save_hitl_paused_session(self, session, workflow_run_response)
                         return workflow_run_response
@@ -1819,7 +1819,8 @@ class Workflow:
                             # Store the paused state
                             workflow_run_response.status = RunStatus.paused
                             workflow_run_response.error_requirements = [error_requirement]
-                            workflow_run_response._paused_step_index = i
+                            workflow_run_response.paused_step_index = i
+                            workflow_run_response.paused_step_name = step_name
                             workflow_run_response.step_results = collected_step_outputs
 
                             # Save the session with paused state
@@ -2024,7 +2025,7 @@ class Workflow:
                     # Handle HITL pause if needed
                     if hitl_result.should_pause:
                         apply_hitl_pause_state(
-                            workflow_run_response, i, collected_step_outputs, hitl_result
+                            workflow_run_response, i, step_name, collected_step_outputs, hitl_result
                         )
 
                         # Yield appropriate event based on requirement type
@@ -2146,7 +2147,8 @@ class Workflow:
                             # Store the paused state
                             workflow_run_response.status = RunStatus.paused
                             workflow_run_response.error_requirements = [error_requirement]
-                            workflow_run_response._paused_step_index = i
+                            workflow_run_response.paused_step_index = i
+                            workflow_run_response.paused_step_name = step_name
                             workflow_run_response.step_results = collected_step_outputs
 
                             # Yield error paused event
@@ -2498,7 +2500,7 @@ class Workflow:
                     # Handle HITL pause if needed
                     if hitl_result.should_pause:
                         apply_hitl_pause_state(
-                            workflow_run_response, i, collected_step_outputs, hitl_result
+                            workflow_run_response, i, step_name, collected_step_outputs, hitl_result
                         )
                         await asave_hitl_paused_session(self, workflow_session, workflow_run_response)
                         return workflow_run_response
@@ -2531,7 +2533,8 @@ class Workflow:
                             # Store the paused state
                             workflow_run_response.status = RunStatus.paused
                             workflow_run_response.error_requirements = [error_requirement]
-                            workflow_run_response._paused_step_index = i
+                            workflow_run_response.paused_step_index = i
+                            workflow_run_response.paused_step_name = step_name
                             workflow_run_response.step_results = collected_step_outputs
 
                             # Save the session with paused state
@@ -2756,7 +2759,7 @@ class Workflow:
                     # Handle HITL pause if needed
                     if hitl_result.should_pause:
                         apply_hitl_pause_state(
-                            workflow_run_response, i, collected_step_outputs, hitl_result
+                            workflow_run_response, i, step_name, collected_step_outputs, hitl_result
                         )
 
                         # Yield appropriate event based on requirement type
@@ -2883,7 +2886,8 @@ class Workflow:
                             # Store the paused state
                             workflow_run_response.status = RunStatus.paused
                             workflow_run_response.error_requirements = [error_requirement]
-                            workflow_run_response._paused_step_index = i
+                            workflow_run_response.paused_step_index = i
+                            workflow_run_response.paused_step_name = step_name
                             workflow_run_response.step_results = collected_step_outputs
 
                             # Yield error paused event
@@ -4340,7 +4344,7 @@ class Workflow:
                 return run_response
 
         # Get the paused step index
-        paused_step_index = run_response._paused_step_index
+        paused_step_index = run_response.paused_step_index
         if paused_step_index is None:
             raise ValueError("Cannot continue run - no paused step index found")
 
@@ -4579,7 +4583,8 @@ class Workflow:
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [step_requirement]
-                    workflow_run_response._paused_step_index = i
+                    workflow_run_response.paused_step_index = i
+                    workflow_run_response.paused_step_name = step_name
                     workflow_run_response.step_results = collected_step_outputs
 
                     self._update_session_metrics(session=session, workflow_run_response=workflow_run_response)
@@ -4600,7 +4605,8 @@ class Workflow:
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [router_requirement]
-                    workflow_run_response._paused_step_index = i
+                    workflow_run_response.paused_step_index = i
+                    workflow_run_response.paused_step_name = step_name
                     workflow_run_response.step_results = collected_step_outputs
 
                     self._update_session_metrics(session=session, workflow_run_response=workflow_run_response)
@@ -4637,7 +4643,8 @@ class Workflow:
                         # Store the paused state
                         workflow_run_response.status = RunStatus.paused
                         workflow_run_response.error_requirements = [error_requirement]
-                        workflow_run_response._paused_step_index = i
+                        workflow_run_response.paused_step_index = i
+                        workflow_run_response.paused_step_name = step_name
                         workflow_run_response.step_results = collected_step_outputs
 
                         # Save the session with paused state
@@ -4856,7 +4863,8 @@ class Workflow:
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [step_requirement]
-                    workflow_run_response._paused_step_index = i
+                    workflow_run_response.paused_step_index = i
+                    workflow_run_response.paused_step_name = step_name
                     workflow_run_response.step_results = collected_step_outputs
 
                     step_paused_event = StepPausedEvent(
@@ -4892,7 +4900,8 @@ class Workflow:
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [router_requirement]
-                    workflow_run_response._paused_step_index = i
+                    workflow_run_response.paused_step_index = i
+                    workflow_run_response.paused_step_name = step_name
                     workflow_run_response.step_results = collected_step_outputs
 
                     router_paused_event = RouterPausedEvent(
@@ -5001,7 +5010,8 @@ class Workflow:
 
                         workflow_run_response.status = RunStatus.paused
                         workflow_run_response.error_requirements = [error_requirement]
-                        workflow_run_response._paused_step_index = i
+                        workflow_run_response.paused_step_index = i
+                        workflow_run_response.paused_step_name = step_name
                         workflow_run_response.step_results = collected_step_outputs
 
                         error_paused_event = StepErrorEvent(
@@ -5231,7 +5241,7 @@ class Workflow:
                 return run_response
 
         # Get the paused step index
-        paused_step_index = run_response._paused_step_index
+        paused_step_index = run_response.paused_step_index
         if paused_step_index is None:
             raise ValueError("Cannot continue run - no paused step index found")
 
@@ -5462,7 +5472,8 @@ class Workflow:
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [step_requirement]
-                    workflow_run_response._paused_step_index = i
+                    workflow_run_response.paused_step_index = i
+                    workflow_run_response.paused_step_name = step_name
                     workflow_run_response.step_results = collected_step_outputs
 
                     self._update_session_metrics(session=session, workflow_run_response=workflow_run_response)
@@ -5483,7 +5494,8 @@ class Workflow:
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [router_requirement]
-                    workflow_run_response._paused_step_index = i
+                    workflow_run_response.paused_step_index = i
+                    workflow_run_response.paused_step_name = step_name
                     workflow_run_response.step_results = collected_step_outputs
 
                     self._update_session_metrics(session=session, workflow_run_response=workflow_run_response)
@@ -5518,7 +5530,8 @@ class Workflow:
 
                         workflow_run_response.status = RunStatus.paused
                         workflow_run_response.error_requirements = [error_requirement]
-                        workflow_run_response._paused_step_index = i
+                        workflow_run_response.paused_step_index = i
+                        workflow_run_response.paused_step_name = step_name
                         workflow_run_response.step_results = collected_step_outputs
 
                         self._update_session_metrics(session=session, workflow_run_response=workflow_run_response)
@@ -5736,7 +5749,8 @@ class Workflow:
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [step_requirement]
-                    workflow_run_response._paused_step_index = i
+                    workflow_run_response.paused_step_index = i
+                    workflow_run_response.paused_step_name = step_name
                     workflow_run_response.step_results = collected_step_outputs
 
                     step_paused_event = StepPausedEvent(
@@ -5772,7 +5786,8 @@ class Workflow:
 
                     workflow_run_response.status = RunStatus.paused
                     workflow_run_response.step_requirements = [router_requirement]
-                    workflow_run_response._paused_step_index = i
+                    workflow_run_response.paused_step_index = i
+                    workflow_run_response.paused_step_name = step_name
                     workflow_run_response.step_results = collected_step_outputs
 
                     router_paused_event = RouterPausedEvent(
@@ -5881,7 +5896,8 @@ class Workflow:
 
                         workflow_run_response.status = RunStatus.paused
                         workflow_run_response.error_requirements = [error_requirement]
-                        workflow_run_response._paused_step_index = i
+                        workflow_run_response.paused_step_index = i
+                        workflow_run_response.paused_step_name = step_name
                         workflow_run_response.step_results = collected_step_outputs
 
                         error_paused_event = StepErrorEvent(

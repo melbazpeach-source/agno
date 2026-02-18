@@ -159,6 +159,7 @@ def create_router_paused_event(
 def apply_hitl_pause_state(
     workflow_run_response: "WorkflowRunOutput",
     step_index: int,
+    step_name: Optional[str],
     collected_step_outputs: List[Union["StepOutput", List["StepOutput"]]],
     hitl_result: HITLCheckResult,
 ) -> None:
@@ -167,11 +168,13 @@ def apply_hitl_pause_state(
     Args:
         workflow_run_response: The workflow run output to update.
         step_index: Index of the step that triggered the pause.
+        step_name: Name of the step that triggered the pause.
         collected_step_outputs: The step outputs collected so far.
         hitl_result: The HITL check result containing the requirement.
     """
     workflow_run_response.status = RunStatus.paused
-    workflow_run_response._paused_step_index = step_index
+    workflow_run_response.paused_step_index = step_index
+    workflow_run_response.paused_step_name = step_name
     workflow_run_response.step_results = collected_step_outputs
 
     if hitl_result.step_requirement:
@@ -314,4 +317,5 @@ def finalize_workflow_completion(
     workflow_run_response.videos = state.output_videos
     workflow_run_response.audio = state.output_audio
     workflow_run_response.status = RunStatus.completed
-    workflow_run_response._paused_step_index = None
+    workflow_run_response.paused_step_index = None
+    workflow_run_response.paused_step_name = None

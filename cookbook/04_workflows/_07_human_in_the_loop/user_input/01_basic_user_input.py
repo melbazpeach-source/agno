@@ -13,7 +13,7 @@ Two ways to define user_input_schema:
 """
 
 from agno.agent import Agent
-from agno.db.sqlite import SqliteDb
+from agno.db.postgres import PostgresDb
 from agno.models.openai import OpenAIChat
 from agno.workflow.decorators import pause
 from agno.workflow.step import Step
@@ -105,7 +105,7 @@ report_step = Step(name="generate_report", agent=writer_agent)
 # Create workflow
 workflow = Workflow(
     name="data_processing_with_params",
-    db=SqliteDb(db_file="tmp/workflow_user_input.db"),
+    db=PostgresDb(db_url="postgresql+psycopg://ai:ai@localhost:5532/ai"),
     steps=[analyze_step, process_step, report_step],
 )
 
@@ -117,6 +117,9 @@ if __name__ == "__main__":
 
     # Handle HITL pauses
     while run_output.is_paused:
+        # Show paused step info
+        print(f"\n[PAUSED] Workflow paused at step {run_output.paused_step_index}: '{run_output.paused_step_name}'")
+
         # Check for user input requirements
         for requirement in run_output.steps_requiring_user_input:
             print(f"\n[HITL] Step '{requirement.step_name}' requires user input")

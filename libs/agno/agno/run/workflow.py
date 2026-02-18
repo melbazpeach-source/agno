@@ -586,8 +586,9 @@ class WorkflowRunOutput:
     # Error-level HITL requirements for handling step failures
     error_requirements: Optional[List["ErrorRequirement"]] = None
 
-    # Track the current step index for resumption
-    _paused_step_index: Optional[int] = None
+    # Track the paused step for resumption and debugging
+    paused_step_index: Optional[int] = None
+    paused_step_name: Optional[str] = None
 
     @property
     def is_paused(self) -> bool:
@@ -659,7 +660,6 @@ class WorkflowRunOutput:
                 "workflow_agent_run",
                 "step_requirements",
                 "error_requirements",
-                "_paused_step_index",
             ]
         }
 
@@ -718,9 +718,6 @@ class WorkflowRunOutput:
 
         if self.error_requirements is not None:
             _dict["error_requirements"] = [req.to_dict() for req in self.error_requirements]
-
-        if self._paused_step_index is not None:
-            _dict["_paused_step_index"] = self._paused_step_index
 
         return _dict
 
@@ -816,8 +813,6 @@ class WorkflowRunOutput:
 
             error_requirements = [ErrorRequirement.from_dict(req) for req in error_requirements_data]
 
-        paused_step_index = data.pop("_paused_step_index", None)
-
         input_data = data.pop("input", None)
 
         # Filter data to only include fields that are actually defined in the WorkflowRunOutput dataclass
@@ -842,7 +837,6 @@ class WorkflowRunOutput:
             input=input_data,
             **filtered_data,
         )
-        result._paused_step_index = paused_step_index
         return result
 
     def get_content_as_string(self, **kwargs) -> str:
