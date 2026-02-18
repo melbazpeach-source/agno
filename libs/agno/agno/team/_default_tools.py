@@ -1142,7 +1142,7 @@ def add_to_knowledge(team: "Team", query: str, result: str) -> str:
 
 def create_knowledge_retriever_search_tool(
     team: "Team",
-    run_response: Optional[RunOutput] = None,
+    run_response: Optional[TeamRunOutput] = None,
     run_context: Optional[RunContext] = None,
     async_mode: bool = False,
 ) -> Function:
