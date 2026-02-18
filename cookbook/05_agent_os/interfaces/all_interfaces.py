@@ -41,7 +41,7 @@ agui_interface = AGUI(agent=agent)
 a2a_interface = A2A(agents=[agent])
 
 agent_os = AgentOS(
-    name="Agno SDK API Reference",
+    name="Agno API Reference",
     description="The all-in-one, private, secure agent platform that runs in your cloud.",
     version=agno_version, 
     agents=[agent],
