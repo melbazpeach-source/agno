@@ -1,8 +1,8 @@
-"""Tests that knowledge_retriever takes priority over knowledge when registering search tools on Team.
+"""Tests for unified knowledge search tool registration on Team.
 
 Regression test for https://github.com/agno-agi/agno/issues/6533
-Same bug as Agent: when both knowledge and knowledge_retriever are set,
-the tool registration ignores the custom retriever.
+Same fix as Agent: all knowledge search goes through a single unified path
+via get_relevant_docs_from_knowledge().
 """
 
 from unittest.mock import MagicMock
@@ -20,9 +20,6 @@ class MockKnowledge:
     def __init__(self):
         self.max_results = 5
         self.vector_db = None
-
-    def get_tools(self, **kwargs):
-        return [Function(name="search_knowledge_base_from_knowledge", entrypoint=lambda query: "from knowledge")]
 
 
 def _make_run_context():
@@ -45,12 +42,11 @@ def _make_model():
 
 
 def _get_knowledge_tools(tools):
-    """Extract knowledge-related tools from the tool list."""
-    return [t for t in tools if isinstance(t, Function) and "knowledge" in t.name.lower()]
+    return [t for t in tools if isinstance(t, Function) and t.name == "search_knowledge_base"]
 
 
-def test_team_tools_use_retriever_when_both_knowledge_and_retriever_set():
-    """When both knowledge and knowledge_retriever are set, tool registration should use the retriever."""
+def test_team_tools_registers_search_tool_when_both_knowledge_and_retriever_set():
+    """When both knowledge and knowledge_retriever are set, a search tool is registered."""
     from agno.team._tools import _determine_tools_for_model
 
     def custom_retriever(query, team=None, num_documents=None, **kwargs):
@@ -73,11 +69,10 @@ def test_team_tools_use_retriever_when_both_knowledge_and_retriever_set():
 
     knowledge_tools = _get_knowledge_tools(tools)
     assert len(knowledge_tools) == 1
-    assert knowledge_tools[0].name == "search_knowledge_base"
 
 
-def test_team_tools_use_knowledge_when_only_knowledge_set():
-    """When only knowledge is set (no retriever), tool registration should use Knowledge.get_tools()."""
+def test_team_tools_registers_search_tool_when_only_knowledge_set():
+    """When only knowledge is set (no retriever), a search tool is still registered."""
     from agno.team._tools import _determine_tools_for_model
 
     team = Team(name="test-team", members=[])
@@ -97,11 +92,10 @@ def test_team_tools_use_knowledge_when_only_knowledge_set():
 
     knowledge_tools = _get_knowledge_tools(tools)
     assert len(knowledge_tools) == 1
-    assert knowledge_tools[0].name == "search_knowledge_base_from_knowledge"
 
 
-def test_team_tools_use_retriever_when_only_retriever_set():
-    """When only knowledge_retriever is set (no knowledge), tool registration should use the retriever."""
+def test_team_tools_registers_search_tool_when_only_retriever_set():
+    """When only knowledge_retriever is set (no knowledge), a search tool is registered."""
     from agno.team._tools import _determine_tools_for_model
 
     def custom_retriever(query, team=None, num_documents=None, **kwargs):
@@ -124,4 +118,3 @@ def test_team_tools_use_retriever_when_only_retriever_set():
 
     knowledge_tools = _get_knowledge_tools(tools)
     assert len(knowledge_tools) == 1
-    assert knowledge_tools[0].name == "search_knowledge_base"

@@ -1140,56 +1140,23 @@ def add_to_knowledge(team: "Team", query: str, result: str) -> str:
     return "Successfully added to knowledge base"
 
 
-def create_knowledge_retriever_search_tool(
+def create_knowledge_search_tool(
     team: "Team",
     run_response: Optional[TeamRunOutput] = None,
     run_context: Optional[RunContext] = None,
+    knowledge_filters: Optional[Union[Dict[str, Any], List[FilterExpr]]] = None,
+    enable_agentic_filters: Optional[bool] = False,
     async_mode: bool = False,
 ) -> Function:
-    """Create a search_knowledge_base tool using the custom knowledge_retriever.
+    """Create a unified search_knowledge_base tool for Team.
 
-    This allows teams to use a custom retriever function without needing
-    a full Knowledge instance. The retriever is wrapped as a tool the team can call.
+    Routes all knowledge searches through get_relevant_docs_from_knowledge(),
+    which checks knowledge_retriever first and falls back to knowledge.search().
     """
 
-    def search_knowledge_base(query: str) -> str:
-        """Use this function to search the knowledge base for information about a query.
-
-        Args:
-            query: The query to search for.
-
-        Returns:
-            str: A string containing the response from the knowledge base.
-        """
-        retrieval_timer = Timer()
-        retrieval_timer.start()
-
-        try:
-            docs = get_relevant_docs_from_knowledge(
-                team,
-                query=query,
-                run_context=run_context,
-            )
-        except Exception as e:
-            log_warning(f"Knowledge retriever failed: {e}")
-            return f"Error searching knowledge base: {e}"
-
-        if run_response is not None and docs:
-            references = MessageReferences(
-                query=query,
-                references=docs,
-                time=round(retrieval_timer.elapsed, 4),
-            )
-            if run_response.references is None:
-                run_response.references = []
-            run_response.references.append(references)
-
-        retrieval_timer.stop()
-        log_debug(f"Time to get references: {retrieval_timer.elapsed:.4f}s")
-
+    def _format_results(docs: Optional[List[Union[Dict[str, Any], str]]]) -> str:
         if not docs:
             return "No documents found"
-
         if team.references_format == "json":
             return json.dumps(docs, indent=2, default=str)
         else:
@@ -1197,54 +1164,153 @@ def create_knowledge_retriever_search_tool(
 
             return yaml.dump(docs, default_flow_style=False)
 
-    async def asearch_knowledge_base(query: str) -> str:
-        """Use this function to search the knowledge base for information about a query.
-
-        Args:
-            query: The query to search for.
-
-        Returns:
-            str: A string containing the response from the knowledge base.
-        """
-        retrieval_timer = Timer()
-        retrieval_timer.start()
-
-        try:
-            docs = await aget_relevant_docs_from_knowledge(
-                team,
-                query=query,
-                run_context=run_context,
-            )
-        except Exception as e:
-            log_warning(f"Knowledge retriever failed: {e}")
-            return f"Error searching knowledge base: {e}"
-
+    def _track_references(docs: Optional[List[Union[Dict[str, Any], str]]], query: str, elapsed: float) -> None:
         if run_response is not None and docs:
             references = MessageReferences(
                 query=query,
                 references=docs,
-                time=round(retrieval_timer.elapsed, 4),
+                time=round(elapsed, 4),
             )
             if run_response.references is None:
                 run_response.references = []
             run_response.references.append(references)
 
-        retrieval_timer.stop()
-        log_debug(f"Time to get references: {retrieval_timer.elapsed:.4f}s")
+    def _resolve_filters(
+        agentic_filters: Optional[List[Any]] = None,
+    ) -> Optional[Union[Dict[str, Any], List[FilterExpr]]]:
+        if agentic_filters:
+            filters_dict: Dict[str, Any] = {}
+            for filt in agentic_filters:
+                if isinstance(filt, dict):
+                    filters_dict.update(filt)
+                elif hasattr(filt, "key") and hasattr(filt, "value"):
+                    filters_dict[filt.key] = filt.value
+            return get_agentic_or_user_search_filters(filters_dict, knowledge_filters)
+        return knowledge_filters
 
-        if not docs:
-            return "No documents found"
+    if enable_agentic_filters:
 
-        if team.references_format == "json":
-            return json.dumps(docs, indent=2, default=str)
-        else:
-            import yaml
+        def search_knowledge_base_with_filters(query: str, filters: Optional[List[KnowledgeFilter]] = None) -> str:
+            """Use this function to search the knowledge base for information about a query.
 
-            return yaml.dump(docs, default_flow_style=False)
+            Args:
+                query: The query to search for.
+                filters (optional): The filters to apply to the search. This is a list of KnowledgeFilter objects.
 
-    if async_mode:
-        return Function.from_callable(asearch_knowledge_base, name="search_knowledge_base")
-    return Function.from_callable(search_knowledge_base, name="search_knowledge_base")
+            Returns:
+                str: A string containing the response from the knowledge base.
+            """
+            retrieval_timer = Timer()
+            retrieval_timer.start()
+            try:
+                docs = get_relevant_docs_from_knowledge(
+                    team,
+                    query=query,
+                    filters=_resolve_filters(filters),
+                    run_context=run_context,
+                )
+            except Exception as e:
+                log_warning(f"Knowledge search failed: {e}")
+                return f"Error searching knowledge base: {type(e).__name__}"
+            _track_references(docs, query, retrieval_timer.elapsed)
+            retrieval_timer.stop()
+            log_debug(f"Time to get references: {retrieval_timer.elapsed:.4f}s")
+            return _format_results(docs)
+
+        async def asearch_knowledge_base_with_filters(
+            query: str, filters: Optional[List[KnowledgeFilter]] = None
+        ) -> str:
+            """Use this function to search the knowledge base for information about a query.
+
+            Args:
+                query: The query to search for.
+                filters (optional): The filters to apply to the search. This is a list of KnowledgeFilter objects.
+
+            Returns:
+                str: A string containing the response from the knowledge base.
+            """
+            retrieval_timer = Timer()
+            retrieval_timer.start()
+            try:
+                docs = await aget_relevant_docs_from_knowledge(
+                    team,
+                    query=query,
+                    filters=_resolve_filters(filters),
+                    run_context=run_context,
+                )
+            except Exception as e:
+                log_warning(f"Knowledge search failed: {e}")
+                return f"Error searching knowledge base: {type(e).__name__}"
+            _track_references(docs, query, retrieval_timer.elapsed)
+            retrieval_timer.stop()
+            log_debug(f"Time to get references: {retrieval_timer.elapsed:.4f}s")
+            return _format_results(docs)
+
+        if async_mode:
+            return Function.from_callable(asearch_knowledge_base_with_filters, name="search_knowledge_base")
+        return Function.from_callable(search_knowledge_base_with_filters, name="search_knowledge_base")
+
+    else:
+
+        def search_knowledge_base(query: str) -> str:
+            """Use this function to search the knowledge base for information about a query.
+
+            Args:
+                query: The query to search for.
+
+            Returns:
+                str: A string containing the response from the knowledge base.
+            """
+            retrieval_timer = Timer()
+            retrieval_timer.start()
+            try:
+                docs = get_relevant_docs_from_knowledge(
+                    team,
+                    query=query,
+                    filters=knowledge_filters,
+                    run_context=run_context,
+                )
+            except Exception as e:
+                log_warning(f"Knowledge search failed: {e}")
+                return f"Error searching knowledge base: {type(e).__name__}"
+            _track_references(docs, query, retrieval_timer.elapsed)
+            retrieval_timer.stop()
+            log_debug(f"Time to get references: {retrieval_timer.elapsed:.4f}s")
+            return _format_results(docs)
+
+        async def asearch_knowledge_base(query: str) -> str:
+            """Use this function to search the knowledge base for information about a query.
+
+            Args:
+                query: The query to search for.
+
+            Returns:
+                str: A string containing the response from the knowledge base.
+            """
+            retrieval_timer = Timer()
+            retrieval_timer.start()
+            try:
+                docs = await aget_relevant_docs_from_knowledge(
+                    team,
+                    query=query,
+                    filters=knowledge_filters,
+                    run_context=run_context,
+                )
+            except Exception as e:
+                log_warning(f"Knowledge search failed: {e}")
+                return f"Error searching knowledge base: {type(e).__name__}"
+            _track_references(docs, query, retrieval_timer.elapsed)
+            retrieval_timer.stop()
+            log_debug(f"Time to get references: {retrieval_timer.elapsed:.4f}s")
+            return _format_results(docs)
+
+        if async_mode:
+            return Function.from_callable(asearch_knowledge_base, name="search_knowledge_base")
+        return Function.from_callable(search_knowledge_base, name="search_knowledge_base")
+
+
+# Backward-compatible alias
+create_knowledge_retriever_search_tool = create_knowledge_search_tool
 
 
 def get_relevant_docs_from_knowledge(

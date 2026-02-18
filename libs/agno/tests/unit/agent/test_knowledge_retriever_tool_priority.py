@@ -1,9 +1,9 @@
-"""Tests that knowledge_retriever takes priority over knowledge when registering search tools.
+"""Tests for unified knowledge search tool registration.
 
 Regression test for https://github.com/agno-agi/agno/issues/6533
-The v2.5 refactor introduced a bug where the search_knowledge tool would use
-Knowledge.get_tools() (which calls the vector DB directly) instead of the
-custom knowledge_retriever, when both were set on an Agent.
+All knowledge search goes through a single unified path via
+get_relevant_docs_from_knowledge(), which checks knowledge_retriever
+first and falls back to knowledge.search().
 """
 
 import pytest
@@ -23,12 +23,6 @@ class MockKnowledge:
         self.max_results = 5
         self.vector_db = None
 
-    def get_tools(self, **kwargs):
-        return [Function(name="search_knowledge_base_from_knowledge", entrypoint=lambda query: "from knowledge")]
-
-    async def aget_tools(self, **kwargs):
-        return [Function(name="search_knowledge_base_from_knowledge", entrypoint=lambda query: "from knowledge")]
-
 
 def _make_run_context():
     return RunContext(run_id="test-run", session_id="test-session")
@@ -42,8 +36,12 @@ def _make_run_response():
     return RunOutput(run_id="test-run", session_id="test-session", agent_id="test-agent")
 
 
-def test_get_tools_uses_retriever_when_both_knowledge_and_retriever_set():
-    """When both knowledge and knowledge_retriever are set, get_tools should use the retriever."""
+def _get_knowledge_tools(tools):
+    return [t for t in tools if isinstance(t, Function) and t.name == "search_knowledge_base"]
+
+
+def test_get_tools_registers_search_tool_when_both_knowledge_and_retriever_set():
+    """When both knowledge and knowledge_retriever are set, a search tool is registered."""
 
     def custom_retriever(query, agent=None, num_documents=None, **kwargs):
         return [{"content": "from retriever"}]
@@ -55,15 +53,12 @@ def test_get_tools_uses_retriever_when_both_knowledge_and_retriever_set():
 
     tools = get_tools(agent, _make_run_response(), _make_run_context(), _make_session())
 
-    # Find the knowledge search tool
-    knowledge_tools = [t for t in tools if isinstance(t, Function) and "knowledge" in t.name.lower()]
+    knowledge_tools = _get_knowledge_tools(tools)
     assert len(knowledge_tools) == 1
-    # Should be the retriever-based tool, not the Knowledge.get_tools() one
-    assert knowledge_tools[0].name == "search_knowledge_base"
 
 
-def test_get_tools_uses_knowledge_when_only_knowledge_set():
-    """When only knowledge is set (no retriever), get_tools should use Knowledge.get_tools()."""
+def test_get_tools_registers_search_tool_when_only_knowledge_set():
+    """When only knowledge is set (no retriever), a search tool is still registered."""
 
     agent = Agent()
     agent.knowledge = MockKnowledge()  # type: ignore
@@ -72,13 +67,12 @@ def test_get_tools_uses_knowledge_when_only_knowledge_set():
 
     tools = get_tools(agent, _make_run_response(), _make_run_context(), _make_session())
 
-    knowledge_tools = [t for t in tools if isinstance(t, Function) and "knowledge" in t.name.lower()]
+    knowledge_tools = _get_knowledge_tools(tools)
     assert len(knowledge_tools) == 1
-    assert knowledge_tools[0].name == "search_knowledge_base_from_knowledge"
 
 
-def test_get_tools_uses_retriever_when_only_retriever_set():
-    """When only knowledge_retriever is set (no knowledge), get_tools should use the retriever."""
+def test_get_tools_registers_search_tool_when_only_retriever_set():
+    """When only knowledge_retriever is set (no knowledge), a search tool is registered."""
 
     def custom_retriever(query, agent=None, num_documents=None, **kwargs):
         return [{"content": "from retriever"}]
@@ -90,14 +84,27 @@ def test_get_tools_uses_retriever_when_only_retriever_set():
 
     tools = get_tools(agent, _make_run_response(), _make_run_context(), _make_session())
 
-    knowledge_tools = [t for t in tools if isinstance(t, Function) and "knowledge" in t.name.lower()]
+    knowledge_tools = _get_knowledge_tools(tools)
     assert len(knowledge_tools) == 1
-    assert knowledge_tools[0].name == "search_knowledge_base"
+
+
+def test_get_tools_no_search_tool_when_neither_knowledge_nor_retriever_set():
+    """When neither knowledge nor knowledge_retriever is set, no search tool is registered."""
+
+    agent = Agent()
+    agent.knowledge = None
+    agent.knowledge_retriever = None
+    agent.search_knowledge = True
+
+    tools = get_tools(agent, _make_run_response(), _make_run_context(), _make_session())
+
+    knowledge_tools = _get_knowledge_tools(tools)
+    assert len(knowledge_tools) == 0
 
 
 @pytest.mark.asyncio
-async def test_aget_tools_uses_retriever_when_both_knowledge_and_retriever_set():
-    """Async variant: when both are set, aget_tools should use the retriever."""
+async def test_aget_tools_registers_search_tool_when_both_knowledge_and_retriever_set():
+    """Async: when both are set, a search tool is registered."""
 
     def custom_retriever(query, agent=None, num_documents=None, **kwargs):
         return [{"content": "from retriever"}]
@@ -109,14 +116,13 @@ async def test_aget_tools_uses_retriever_when_both_knowledge_and_retriever_set()
 
     tools = await aget_tools(agent, _make_run_response(), _make_run_context(), _make_session())
 
-    knowledge_tools = [t for t in tools if isinstance(t, Function) and "knowledge" in t.name.lower()]
+    knowledge_tools = _get_knowledge_tools(tools)
     assert len(knowledge_tools) == 1
-    assert knowledge_tools[0].name == "search_knowledge_base"
 
 
 @pytest.mark.asyncio
-async def test_aget_tools_uses_knowledge_when_only_knowledge_set():
-    """Async variant: when only knowledge is set, aget_tools should use Knowledge.aget_tools()."""
+async def test_aget_tools_registers_search_tool_when_only_knowledge_set():
+    """Async: when only knowledge is set, a search tool is still registered."""
 
     agent = Agent()
     agent.knowledge = MockKnowledge()  # type: ignore
@@ -125,6 +131,5 @@ async def test_aget_tools_uses_knowledge_when_only_knowledge_set():
 
     tools = await aget_tools(agent, _make_run_response(), _make_run_context(), _make_session())
 
-    knowledge_tools = [t for t in tools if isinstance(t, Function) and "knowledge" in t.name.lower()]
+    knowledge_tools = _get_knowledge_tools(tools)
     assert len(knowledge_tools) == 1
-    assert knowledge_tools[0].name == "search_knowledge_base_from_knowledge"
