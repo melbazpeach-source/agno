@@ -7,6 +7,7 @@ first and falls back to knowledge.search().
 """
 
 import pytest
+from unittest.mock import MagicMock
 
 from agno.agent import Agent
 from agno.agent._tools import aget_tools, get_tools
@@ -100,6 +101,43 @@ def test_get_tools_no_search_tool_when_neither_knowledge_nor_retriever_set():
 
     knowledge_tools = _get_knowledge_tools(tools)
     assert len(knowledge_tools) == 0
+
+
+def test_search_tool_invokes_custom_retriever_when_both_set():
+    """End-to-end: when both knowledge and retriever are set, invoking the tool calls the retriever."""
+    retriever_mock = MagicMock(return_value=[{"content": "from custom retriever"}])
+
+    agent = Agent()
+    agent.knowledge = MockKnowledge()  # type: ignore
+    agent.knowledge_retriever = retriever_mock  # type: ignore
+    agent.search_knowledge = True
+
+    tools = get_tools(agent, _make_run_response(), _make_run_context(), _make_session())
+    knowledge_tools = _get_knowledge_tools(tools)
+    assert len(knowledge_tools) == 1
+
+    # Invoke the tool's entrypoint directly
+    result = knowledge_tools[0].entrypoint("test query")
+    retriever_mock.assert_called_once()
+    assert "from custom retriever" in result
+
+
+def test_search_tool_invokes_custom_retriever_when_only_retriever_set():
+    """End-to-end: when only retriever is set (no knowledge), invoking the tool calls the retriever."""
+    retriever_mock = MagicMock(return_value=[{"content": "retriever only"}])
+
+    agent = Agent()
+    agent.knowledge = None
+    agent.knowledge_retriever = retriever_mock  # type: ignore
+    agent.search_knowledge = True
+
+    tools = get_tools(agent, _make_run_response(), _make_run_context(), _make_session())
+    knowledge_tools = _get_knowledge_tools(tools)
+    assert len(knowledge_tools) == 1
+
+    result = knowledge_tools[0].entrypoint("test query")
+    retriever_mock.assert_called_once()
+    assert "retriever only" in result
 
 
 @pytest.mark.asyncio

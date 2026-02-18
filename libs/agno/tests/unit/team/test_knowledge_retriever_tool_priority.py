@@ -118,3 +118,32 @@ def test_team_tools_registers_search_tool_when_only_retriever_set():
 
     knowledge_tools = _get_knowledge_tools(tools)
     assert len(knowledge_tools) == 1
+
+
+def test_team_search_tool_invokes_custom_retriever_when_both_set():
+    """End-to-end: when both knowledge and retriever are set, invoking the tool calls the retriever."""
+    from agno.team._tools import _determine_tools_for_model
+
+    retriever_mock = MagicMock(return_value=[{"content": "from team retriever"}])
+
+    team = Team(name="test-team", members=[])
+    team.knowledge = MockKnowledge()  # type: ignore
+    team.knowledge_retriever = retriever_mock  # type: ignore
+    team.search_knowledge = True
+
+    tools = _determine_tools_for_model(
+        team=team,
+        model=_make_model(),
+        run_response=_make_run_response(),
+        run_context=_make_run_context(),
+        team_run_context={},
+        session=_make_session(),
+        async_mode=False,
+    )
+
+    knowledge_tools = _get_knowledge_tools(tools)
+    assert len(knowledge_tools) == 1
+
+    result = knowledge_tools[0].entrypoint("test query")
+    retriever_mock.assert_called_once()
+    assert "from team retriever" in result
