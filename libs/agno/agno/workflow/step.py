@@ -377,6 +377,7 @@ class Step:
                         field_type=f.get("field_type", "str"),
                         description=f.get("description"),
                         required=f.get("required", True),
+                        allowed_values=f.get("allowed_values"),
                     )
                 )
         return result

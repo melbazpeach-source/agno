@@ -6,6 +6,10 @@ before executing a step. The user input is then available to the step
 via step_input.additional_data["user_input"].
 
 Use case: Collecting parameters from the user before processing data.
+
+Two ways to define user_input_schema:
+1. List of UserInputField objects (recommended) - explicit and type-safe
+2. List of dicts - simple but less explicit
 """
 
 from agno.agent import Agent
@@ -13,7 +17,7 @@ from agno.db.sqlite import SqliteDb
 from agno.models.openai import OpenAIChat
 from agno.workflow.decorators import pause
 from agno.workflow.step import Step
-from agno.workflow.types import StepInput, StepOutput
+from agno.workflow.types import StepInput, StepOutput, UserInputField
 from agno.workflow.workflow import Workflow
 
 
@@ -28,29 +32,30 @@ def analyze_data(step_input: StepInput) -> StepOutput:
 
 
 # Step 2: Process with user-provided parameters (HITL - user input)
+# Using UserInputField for schema - explicit and type-safe
 @pause(
     name="Process Data",
     requires_user_input=True,
     user_input_message="Please provide processing parameters:",
     user_input_schema=[
-        {
-            "name": "threshold",
-            "field_type": "float",
-            "description": "Processing threshold (0.0 to 1.0)",
-            "required": True,
-        },
-        {
-            "name": "mode",
-            "field_type": "str",
-            "description": "Processing mode: 'fast' or 'accurate'",
-            "required": True,
-        },
-        {
-            "name": "batch_size",
-            "field_type": "int",
-            "description": "Number of records per batch",
-            "required": False,
-        },
+        UserInputField(
+            name="threshold",
+            field_type="float",
+            description="Processing threshold (0.0 to 1.0)",
+            required=True,
+        ),
+        UserInputField(
+            name="mode",
+            field_type="str",
+            description="Processing mode: 'fast' or 'accurate'",
+            required=True,
+        ),
+        UserInputField(
+            name="batch_size",
+            field_type="int",
+            description="Number of records per batch",
+            required=False,
+        ),
     ],
 )
 def process_with_params(step_input: StepInput) -> StepOutput:
