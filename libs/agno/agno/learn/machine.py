@@ -14,7 +14,10 @@ Plus maintenance via the Curator for keeping memories healthy.
 
 from dataclasses import dataclass, field
 from os import getenv
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+
+if TYPE_CHECKING:
+    from agno.tools.function import Function
 
 from agno.learn.config import (
     DecisionLogConfig,
@@ -425,7 +428,7 @@ class LearningMachine:
         agent_id: Optional[str] = None,
         team_id: Optional[str] = None,
         **kwargs,
-    ) -> List[Callable]:
+    ) -> List[Union[Callable, "Function"]]:
         """Get learning tools to expose to the agent.
 
         Returns tools based on which stores are enabled:
@@ -441,9 +444,9 @@ class LearningMachine:
             team_id: Optional team context.
 
         Returns:
-            List of callable tools.
+            List of callable tools or Function objects.
         """
-        tools = []
+        tools: List[Union[Callable, "Function"]] = []
         context = {
             "user_id": user_id,
             "session_id": session_id,
@@ -472,9 +475,9 @@ class LearningMachine:
         agent_id: Optional[str] = None,
         team_id: Optional[str] = None,
         **kwargs,
-    ) -> List[Callable]:
+    ) -> List[Union[Callable, "Function"]]:
         """Async version of get_tools."""
-        tools = []
+        tools: List[Union[Callable, "Function"]] = []
         context = {
             "user_id": user_id,
             "session_id": session_id,

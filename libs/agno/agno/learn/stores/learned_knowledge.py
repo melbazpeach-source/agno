@@ -29,9 +29,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from os import getenv
 from textwrap import dedent
-from typing import Any, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Union
 
 from agno.learn.config import LearnedKnowledgeConfig, LearningMode
+
+if TYPE_CHECKING:
+    from agno.tools.function import Function
 from agno.learn.schemas import LearnedKnowledge
 from agno.learn.stores.protocol import LearningStore
 from agno.learn.utils import to_dict_safe
@@ -307,6 +310,28 @@ class LearnedKnowledgeStore(LearningStore):
 
     def _build_propose_mode_context(self, data: Any) -> str:
         """Build context for PROPOSE mode."""
+        save_rules = ""
+        save_tools = ""
+        if self.config.agent_can_save:
+            save_rules = dedent("""\
+
+            **RULE 2: Propose learnings clearly in your response.**
+            If you discover something worth preserving, include this block at the end of your response:
+
+            ---
+            **Proposed Learning**
+            **Title:** [Concise title]
+            **Context:** [When this applies]
+            **Insight:** [The learning - specific and actionable]
+            ---
+
+            **RULE 3: After proposing, call `save_learning` immediately.**
+            The system handles user confirmation via HITL because `save_learning` requires confirmation in PROPOSE mode.
+            Do NOT ask for a separate "yes/no" confirmation in chat.
+            Before saving, search first to check for duplicates.
+            """)
+            save_tools = "\n`save_learning(title, learning, context, tags)` - Call after proposing; confirmation is handled by the system."
+
         instructions = dedent("""\
             <learning_system>
             You have a knowledge base of reusable learnings. In PROPOSE mode, saving requires user approval.
@@ -317,27 +342,10 @@ class LearnedKnowledgeStore(LearningStore):
             When the user asks for advice, recommendations, how-to guidance, or best practices:
             → First call `search_learnings` with relevant keywords
             → Then incorporate any relevant findings into your response
-
-            **RULE 2: Propose learnings, don't save directly.**
-            If you discover something worth preserving, propose it at the end of your response:
-
-            ---
-            **Proposed Learning**
-            **Title:** [Concise title]
-            **Context:** [When this applies]
-            **Insight:** [The learning - specific and actionable]
-
-            Save this to the knowledge base? (yes/no)
-            ---
-
-            **RULE 3: Only save after explicit approval.**
-            Call `save_learning` ONLY after the user says "yes" to your proposal.
-            Before saving, search first to check for duplicates.
-
+            {save_rules}
             ## Tools
 
-            `search_learnings(query)` - Search for relevant prior insights. Use liberally.
-            `save_learning(title, learning, context, tags)` - Save ONLY after user approval.
+            `search_learnings(query)` - Search for relevant prior insights. Use liberally.{save_tools}
 
             ## What to Propose
 
@@ -351,7 +359,7 @@ class LearnedKnowledgeStore(LearningStore):
             - User-specific preferences
             - Things the user already knew
             </learning_system>\
-        """)
+        """).format(save_rules=save_rules, save_tools=save_tools)
 
         if data:
             learnings = data if isinstance(data, list) else [data]
@@ -398,7 +406,7 @@ class LearnedKnowledgeStore(LearningStore):
         team_id: Optional[str] = None,
         namespace: Optional[str] = None,
         **kwargs,
-    ) -> List[Callable]:
+    ) -> List[Union[Callable, "Function"]]:
         """Get tools to expose to agent.
 
         Args:
@@ -409,7 +417,7 @@ class LearnedKnowledgeStore(LearningStore):
             **kwargs: Additional context (ignored).
 
         Returns:
-            List of callable tools (empty if enable_agent_tools=False).
+            List of callable tools or Function objects (empty if enable_agent_tools=False).
         """
         if not self.config.enable_agent_tools:
             return []
@@ -427,7 +435,7 @@ class LearnedKnowledgeStore(LearningStore):
         team_id: Optional[str] = None,
         namespace: Optional[str] = None,
         **kwargs,
-    ) -> List[Callable]:
+    ) -> List[Union[Callable, "Function"]]:
         """Async version of get_tools."""
         if not self.config.enable_agent_tools:
             return []
@@ -479,12 +487,15 @@ class LearnedKnowledgeStore(LearningStore):
         agent_id: Optional[str] = None,
         team_id: Optional[str] = None,
         namespace: Optional[str] = None,
-    ) -> List[Callable]:
+    ) -> List[Union[Callable, "Function"]]:
         """Get the tools to expose to the agent.
 
         Returns TWO tools (based on config settings):
         1. search_learnings - Find relevant learnings
         2. save_learning - Save reusable insights
+
+        In PROPOSE mode, save_learning is wrapped with requires_confirmation=True
+        so the agent run pauses for user approval before saving.
 
         Args:
             user_id: User context (for "user" namespace scoping).
@@ -493,9 +504,11 @@ class LearnedKnowledgeStore(LearningStore):
             namespace: Default namespace for saves (default: "global").
 
         Returns:
-            List of callable tools.
+            List of callable tools (or Function objects for HITL-gated tools).
         """
-        tools = []
+        from agno.tools.function import Function
+
+        tools: List[Union[Callable, Function]] = []
 
         if self.config.agent_can_search:
             tools.append(
@@ -503,14 +516,18 @@ class LearnedKnowledgeStore(LearningStore):
             )
 
         if self.config.agent_can_save:
-            tools.append(
-                self._create_save_learning_tool(
-                    namespace=namespace or self.config.namespace,
-                    user_id=user_id,
-                    agent_id=agent_id,
-                    team_id=team_id,
-                )
+            save_callable = self._create_save_learning_tool(
+                namespace=namespace or self.config.namespace,
+                user_id=user_id,
+                agent_id=agent_id,
+                team_id=team_id,
             )
+            if self.config.mode == LearningMode.PROPOSE:
+                save_fn = Function.from_callable(save_callable)
+                save_fn.requires_confirmation = True
+                tools.append(save_fn)
+            else:
+                tools.append(save_callable)
 
         return tools
 
@@ -520,9 +537,11 @@ class LearnedKnowledgeStore(LearningStore):
         agent_id: Optional[str] = None,
         team_id: Optional[str] = None,
         namespace: Optional[str] = None,
-    ) -> List[Callable]:
+    ) -> List[Union[Callable, "Function"]]:
         """Async version of get_agent_tools."""
-        tools = []
+        from agno.tools.function import Function
+
+        tools: List[Union[Callable, Function]] = []
 
         if self.config.agent_can_search:
             tools.append(
@@ -530,14 +549,18 @@ class LearnedKnowledgeStore(LearningStore):
             )
 
         if self.config.agent_can_save:
-            tools.append(
-                self._create_async_save_learning_tool(
-                    namespace=namespace or self.config.namespace,
-                    user_id=user_id,
-                    agent_id=agent_id,
-                    team_id=team_id,
-                )
+            save_callable = self._create_async_save_learning_tool(
+                namespace=namespace or self.config.namespace,
+                user_id=user_id,
+                agent_id=agent_id,
+                team_id=team_id,
             )
+            if self.config.mode == LearningMode.PROPOSE:
+                save_fn = Function.from_callable(save_callable)
+                save_fn.requires_confirmation = True
+                tools.append(save_fn)
+            else:
+                tools.append(save_callable)
 
         return tools
 

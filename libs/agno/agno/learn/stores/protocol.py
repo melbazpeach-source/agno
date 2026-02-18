@@ -9,7 +9,10 @@ This protocol enables:
 - Type safety with Protocol typing
 """
 
-from typing import Any, Callable, List, Optional, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Protocol, Union, runtime_checkable
+
+if TYPE_CHECKING:
+    from agno.tools.function import Function
 
 
 @runtime_checkable
@@ -89,21 +92,22 @@ class LearningStore(Protocol):
         """
         ...
 
-    def get_tools(self, **kwargs) -> List[Callable]:
+    def get_tools(self, **kwargs) -> List[Union[Callable, "Function"]]:
         """Get tools to expose to the agent.
 
         Returns callable tools that the agent can use to interact
         with this learning type (e.g., update_user_memory, search_learnings).
+        Some tools may be returned as Function objects (e.g., with requires_confirmation).
 
         Args:
             **kwargs: Context including user_id, session_id, etc.
 
         Returns:
-            List of callable tools, or empty list if no tools.
+            List of callable tools or Function objects, or empty list if no tools.
         """
         ...
 
-    async def aget_tools(self, **kwargs) -> List[Callable]:
+    async def aget_tools(self, **kwargs) -> List[Union[Callable, "Function"]]:
         """Async version of get_tools."""
         ...
 
