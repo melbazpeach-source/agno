@@ -1,23 +1,28 @@
 # Test Log: async_mongo
 
-**Date:** 2026-02-11
+> Tests not yet run. Run each file and update this log.
 
 ### async_mongodb_for_agent.py
-**Status:** SKIP
-**Description:** MongoDB backend not available locally. Code review: has double `asyncio.run()` bug (same as sqlite/postgres async agent files).
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `async_mongodb_for_agent.py`.
 
 ---
 
 ### async_mongodb_for_team.py
-**Status:** SKIP
-**Description:** MongoDB backend not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `async_mongodb_for_team.py`.
 
 ---
 
 ### async_mongodb_for_workflow.py
-**Status:** SKIP
-**Description:** MongoDB backend not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `async_mongodb_for_workflow.py`.
 
 ---
 
-**Totals:** 0 PASS, 0 FAIL, 3 SKIP

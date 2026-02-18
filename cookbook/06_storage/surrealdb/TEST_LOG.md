@@ -1,23 +1,28 @@
 # Test Log: surrealdb
 
-**Date:** 2026-02-11
+> Tests not yet run. Run each file and update this log.
 
 ### surrealdb_for_agent.py
-**Status:** SKIP
-**Description:** SurrealDB backend not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `surrealdb_for_agent.py`.
 
 ---
 
 ### surrealdb_for_team.py
-**Status:** SKIP
-**Description:** SurrealDB backend not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `surrealdb_for_team.py`.
 
 ---
 
 ### surrealdb_for_workflow.py
-**Status:** SKIP
-**Description:** SurrealDB backend not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `surrealdb_for_workflow.py`.
 
 ---
 
-**Totals:** 0 PASS, 0 FAIL, 3 SKIP

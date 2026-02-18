@@ -1,11 +1,11 @@
-# Test Log — skills/
+# Test Log: skills
+
+> Tests not yet run. Run each file and update this log.
 
 ### skills_with_agentos.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** Creates an agent with `LocalSkills` loader pointing to `sample_skills/` directory. Skills are discovered and attached as tools at import time. Served via AgentOS.
-
-**Result:** Imports OK. Skills loaded from local directory. AgentOS app constructed successfully.
+**Description:** Skills With Agentos.
 
 ---

@@ -1,26 +1,24 @@
 # Test Log: 09_decision_logs
 
-> Updated: 2026-02-14
+> Tests not yet run. Run each file and update this log.
 
 ### 01_basic_decision_log.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** Agent with DecisionLogTool logs decisions when asked for recommendations. Tests `.learning_machine` property access (changed from `.get_learning_machine()` method).
+**Description:** Run and validate `01_basic_decision_log.py` example behavior.
 
-**Result:** Agent logged a decision recommending Python for web scraping with reasoning and alternatives. Decision log displayed correctly via rich Panel. Runs in ~5s.
-**Re-verified:** 2026-02-16 — Post-rebase onto main. PASS. Decision log displayed correctly with multiple entries.
+**Result:** Not run yet.
 
 ---
 
 ### 02_decision_log_always.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** Agent with ALWAYS-mode decision logging + DuckDuckGo search tool. Agent searched for AI agent news and auto-logged decisions.
+**Description:** Run and validate `02_decision_log_always.py` example behavior.
 
-**Result:** PASS. Ran in ~15s. DDG search executed, decision log displayed (empty — ALWAYS mode logs after response, not during tool calls as expected).
-**Re-verified:** 2026-02-16 — Post-rebase onto main. PASS.
+**Result:** Not run yet.
 
 ---
 

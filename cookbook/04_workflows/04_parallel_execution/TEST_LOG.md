@@ -1,14 +1,23 @@
-# Test Log — 04_parallel_execution
+# TEST_LOG for cookbook/04_workflows/04_parallel_execution
 
-Tested: 2026-02-12 | Branch: cookbook/v25-merge-fixes
+Generated: 2026-02-08 16:39:09
 
-| File | Status | Notes |
-|------|--------|-------|
-| parallel_basic.py | FAIL | First workflow completed (33.5s), second failed: "Event loop is closed" + NoneType parent_run_id |
-| parallel_with_condition.py | FAIL | Killed by timeout 120 before completing; output was being generated but no "Completed" message |
+### parallel_basic.py
 
-## Summary
+**Status:** FAIL
 
-- **PASS:** 0
-- **FAIL:** 2 (1 event loop closed, 1 timeout)
-- **SKIP:** 0
+**Description:** Executed with `.venvs/demo/bin/python` (mode: normal, timeout: 35s).
+
+**Result:** Timed out after 35s. DEBUG Added RunOutput to Agent Session
+
+---
+
+### parallel_with_condition.py
+
+**Status:** FAIL
+
+**Description:** Executed with `.venvs/demo/bin/python` (mode: normal, timeout: 35s).
+
+**Result:** Exited with code 1. ImportError: `exa_py` not installed. Please install using `pip install exa_py`
+
+---

@@ -1,51 +1,43 @@
 # Test Log: rbac/symmetric
 
-### basic.py
-
-**Status:** PASS
-
-**Description:** Basic RBAC with HS256 JWT and `AuthorizationConfig`. Creates AgentOS with `authorization=True`, generates test tokens with different scopes.
-
-**Result:** Import and app construction OK. JWT middleware added with HS256 algorithm.
-
----
+> Tests not yet run. Run each file and update this log.
 
 ### advanced_scopes.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** Advanced scope hierarchy with wildcards, per-resource scopes, and audience verification. Uses `AuthorizationConfig` with `verify_audience=True`.
-
-**Result:** Import and app construction OK. JWT middleware added with HS256 algorithm.
+**Description:** Advanced RBAC Example with AgentOS - Simplified Scopes with Audience Verification.
 
 ---
 
 ### agent_permissions.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** Per-agent permission scopes. Agents have individual `permission_scopes` lists, MCPTools with streamable-http transport.
-
-**Result:** Import and app construction OK. JWT middleware added with HS256 algorithm.
+**Description:** Per-Agent Permissions Example with AgentOS.
 
 ---
 
-### with_cookie.py
+### basic.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** Cookie-based JWT RBAC. Creates a custom FastAPI app, adds JWTMiddleware with `token_source=TokenSource.BOTH`, passes `base_app=` to AgentOS.
-
-**Result:** Import and app construction OK. Custom FastAPI app with JWT middleware.
+**Description:** Basic RBAC Example with AgentOS.
 
 ---
 
 ### custom_scope_mappings.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** Custom scope mappings via JWTMiddleware. Manually adds middleware to AgentOS app with custom `scope_mappings` dict and `admin_scope` override.
+**Description:** Custom Scope Mappings Example.
 
-**Result:** Import and app construction OK. Custom scope mappings applied.
+---
+
+### with_cookie.py
+
+**Status:** PENDING
+
+**Description:** Basic RBAC Example with AgentOS.
 
 ---

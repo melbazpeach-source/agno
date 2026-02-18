@@ -10,12 +10,11 @@
 
 ### agentic_rag_infinity_reranker.py
 
-**Status:** SKIP (missing package: infinity_client)
+**Status:** SKIP
 
-**Description:** Agentic RAG with Infinity reranker. PR fixed URL path.
+**Description:** Runtime execution was not performed in this relocation pass.
 
-**Result:** py_compile PASS. Runtime requires infinity_client package.
-**Re-verified:** 2026-02-14 — URL path fix confirmed via compile check.
+**Result:** Requires optional dependencies/services (for example `cohere` and a running Infinity server).
 
 ---
 

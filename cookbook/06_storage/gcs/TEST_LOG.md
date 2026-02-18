@@ -1,11 +1,12 @@
 # Test Log: gcs
 
-**Date:** 2026-02-11
+> Tests not yet run. Run each file and update this log.
 
 ### gcs_json_for_agent.py
-**Status:** SKIP
-**Description:** Google Cloud Storage / GCP credentials not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `gcs_json_for_agent.py`.
 
 ---
 
-**Totals:** 0 PASS, 0 FAIL, 1 SKIP

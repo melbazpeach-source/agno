@@ -1,31 +1,27 @@
 # Test Log: knowledge
 
-### agentos_knowledge.py
-
-**Status:** PASS
-
-**Description:** AgentOS with Knowledge (sync and async). ChromaDb vector store, PDF reader, content upload endpoints.
-
-**Result:** Import and app construction OK.
-
----
+> Tests not yet run. Run each file and update this log.
 
 ### agentos_excel_analyst.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** AgentOS Excel analyst with Knowledge integration. Analyzes uploaded Excel files.
+**Description:** Agentos Excel Analyst.
 
-**Result:** Import and app construction OK.
+---
+
+### agentos_knowledge.py
+
+**Status:** PENDING
+
+**Description:** AgentOS Knowledge (Sync And Async).
 
 ---
 
 ### agno_docs_agent.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** Agent for searching Agno documentation. Uses Knowledge with ChromaDb.
-
-**Result:** Import and app construction OK.
+**Description:** Agno Docs Agent.
 
 ---

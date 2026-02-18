@@ -1,23 +1,28 @@
 # Test Log: redis
 
-**Date:** 2026-02-11
+> Tests not yet run. Run each file and update this log.
 
 ### redis_for_agent.py
-**Status:** SKIP
-**Description:** Redis backend not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `redis_for_agent.py`.
 
 ---
 
 ### redis_for_team.py
-**Status:** SKIP
-**Description:** Redis backend not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `redis_for_team.py`.
 
 ---
 
 ### redis_for_workflow.py
-**Status:** SKIP
-**Description:** Redis backend not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `redis_for_workflow.py`.
 
 ---
 
-**Totals:** 0 PASS, 0 FAIL, 3 SKIP

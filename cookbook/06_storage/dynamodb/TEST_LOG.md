@@ -1,17 +1,20 @@
 # Test Log: dynamodb
 
-**Date:** 2026-02-11
+> Tests not yet run. Run each file and update this log.
 
 ### dynamo_for_agent.py
-**Status:** SKIP
-**Description:** DynamoDB / AWS credentials not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `dynamo_for_agent.py`.
 
 ---
 
 ### dynamo_for_team.py
-**Status:** SKIP
-**Description:** DynamoDB / AWS credentials not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `dynamo_for_team.py`.
 
 ---
 
-**Totals:** 0 PASS, 0 FAIL, 2 SKIP

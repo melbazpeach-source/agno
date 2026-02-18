@@ -1,17 +1,20 @@
 # Test Log: mysql
 
-**Date:** 2026-02-11
+> Tests not yet run. Run each file and update this log.
 
 ### mysql_for_agent.py
-**Status:** SKIP
-**Description:** MySQL backend not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `mysql_for_agent.py`.
 
 ---
 
 ### mysql_for_team.py
-**Status:** SKIP
-**Description:** MySQL backend not available locally.
+
+**Status:** PENDING
+
+**Description:** Pending test coverage for `mysql_for_team.py`.
 
 ---
 
-**Totals:** 0 PASS, 0 FAIL, 2 SKIP

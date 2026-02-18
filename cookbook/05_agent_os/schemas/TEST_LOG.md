@@ -1,21 +1,19 @@
-# Test Log — schemas/
+# Test Log: schemas
+
+> Tests not yet run. Run each file and update this log.
 
 ### agent_schemas.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** Defines agents with Pydantic `input_schema` (ResearchTopic) and `output_schema` (MovieScript), served via AgentOS. Tests import, AgentOS construction, and FastAPI app route generation.
-
-**Result:** All imports resolve. AgentOS constructs successfully. FastAPI app generated with full route set including agent run endpoints.
+**Description:** Agent Input And Output Schemas.
 
 ---
 
 ### team_schemas.py
 
-**Status:** PASS
+**Status:** PENDING
 
-**Description:** Defines teams with `input_schema` (ResearchProject) and `output_schema` (ResearchReport), served via AgentOS. Uses `delegate_to_all_members=True` (v2.4 compat shim, still supported in v2.5).
-
-**Result:** All imports resolve. AgentOS constructs successfully. FastAPI app generated with full route set including team run endpoints.
+**Description:** Team Input And Output Schemas.
 
 ---

@@ -11,12 +11,11 @@
 
 ### 01_team_metrics.py
 
-**Status:** PASS
+**Status:** FAIL
 
 **Description:** Cookbook execution attempt
 
-**Result:** Timeout after 30s (original automated run with insufficient timeout)
-**Re-verified:** 2026-02-16 — Post-rebase onto main. PASS with `timeout 120`. Team fetched NVDA stock price via yfinance, metrics displayed correctly (input/output tokens, member metrics).
+**Result:** Timeout after 30s
 
 ---
 

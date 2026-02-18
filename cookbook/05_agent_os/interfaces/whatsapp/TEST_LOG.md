@@ -52,11 +52,8 @@
 
 ### reasoning_agent.py
 
-**Status:** PASS (compile only)
+**Status:** PENDING
 
-**Description:** WhatsApp reasoning agent. PR fixed YFinanceTools to use bare constructor (removed dead boolean params).
-
-**Result:** py_compile PASS. Runtime requires WhatsApp interface setup.
-**Tested:** 2026-02-14
+**Description:** Reasoning Agent.
 
 ---
