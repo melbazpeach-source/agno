@@ -1207,6 +1207,7 @@ def create_knowledge_search_tool(
                     team,
                     query=query,
                     filters=_resolve_filters(filters),
+                    validate_filters=True,
                     run_context=run_context,
                 )
             except Exception as e:
@@ -1236,6 +1237,7 @@ def create_knowledge_search_tool(
                     team,
                     query=query,
                     filters=_resolve_filters(filters),
+                    validate_filters=True,
                     run_context=run_context,
                 )
             except Exception as e:
@@ -1318,6 +1320,7 @@ def get_relevant_docs_from_knowledge(
     query: str,
     num_documents: Optional[int] = None,
     filters: Optional[Union[Dict[str, Any], List[FilterExpr]]] = None,
+    validate_filters: bool = False,
     run_context: Optional[RunContext] = None,
     **kwargs,
 ) -> Optional[List[Union[Dict[str, Any], str]]]:
@@ -1334,7 +1337,7 @@ def get_relevant_docs_from_knowledge(
         num_documents = getattr(knowledge, "max_results", None)
 
     # Validate the filters against known valid filter keys
-    if knowledge is not None and filters is not None:
+    if knowledge is not None and filters is not None and validate_filters:
         validate_filters_method = getattr(knowledge, "validate_filters", None)
         if callable(validate_filters_method):
             valid_filters, invalid_keys = validate_filters_method(filters)
@@ -1404,6 +1407,7 @@ async def aget_relevant_docs_from_knowledge(
     query: str,
     num_documents: Optional[int] = None,
     filters: Optional[Union[Dict[str, Any], List[FilterExpr]]] = None,
+    validate_filters: bool = False,
     run_context: Optional[RunContext] = None,
     **kwargs,
 ) -> Optional[List[Union[Dict[str, Any], str]]]:
@@ -1420,7 +1424,7 @@ async def aget_relevant_docs_from_knowledge(
         num_documents = getattr(knowledge, "max_results", None)
 
     # Validate the filters against known valid filter keys
-    if knowledge is not None and filters is not None:
+    if knowledge is not None and filters is not None and validate_filters:
         avalidate_filters_method = getattr(knowledge, "avalidate_filters", None)
         if callable(avalidate_filters_method):
             valid_filters, invalid_keys = await avalidate_filters_method(filters)
