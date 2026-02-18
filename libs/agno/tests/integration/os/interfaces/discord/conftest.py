@@ -126,24 +126,6 @@ def make_slash_command(
     return payload
 
 
-def make_component_click(
-    custom_id: str,
-    user_id: str = "user1",
-    application_id: str = "app123",
-    token: str = "component_token",
-) -> dict:
-    return {
-        "type": 3,
-        "id": "5678",
-        "application_id": application_id,
-        "token": token,
-        "guild_id": "guild1",
-        "channel_id": "channel1",
-        "member": {"user": {"id": user_id}},
-        "data": {"custom_id": custom_id},
-    }
-
-
 def make_ping() -> dict:
     return {"type": 1}
 
@@ -158,9 +140,6 @@ def make_agent_response(**overrides):
         status="OK",
         content="Hello from agent",
         reasoning_content=None,
-        is_paused=False,
-        run_id=None,
-        tools_requiring_confirmation=None,
         images=None,
         files=None,
         videos=None,
@@ -168,16 +147,6 @@ def make_agent_response(**overrides):
     )
     defaults.update(overrides)
     return MagicMock(**defaults)
-
-
-def make_paused_response(run_id="run123", tool_name="dangerous_tool"):
-    mock_tool = MagicMock()
-    mock_tool.tool_name = tool_name
-    return make_agent_response(
-        is_paused=True,
-        run_id=run_id,
-        tools_requiring_confirmation=[mock_tool],
-    )
 
 
 # ---------------------------------------------------------------------------
