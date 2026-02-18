@@ -4302,7 +4302,7 @@ def cleanup_and_store(
 
     # Update run_response.session_state before saving
     # This ensures RunOutput reflects all tool modifications
-    if session.session_data is not None and run_context is not None and run_context.session_state is not None:
+    if run_context is not None and run_context.session_state is not None:
         run_response.session_state = run_context.session_state
 
     # Optional: Save output to file if save_response_to_file is set
@@ -4347,9 +4347,9 @@ async def acleanup_and_store(
     if run_response.metrics:
         run_response.metrics.stop_timer()
 
-    # Update run_response.session_state from session before saving
+    # Update run_response.session_state before saving
     # This ensures RunOutput reflects all tool modifications
-    if session.session_data is not None and run_context is not None and run_context.session_state is not None:
+    if run_context is not None and run_context.session_state is not None:
         run_response.session_state = run_context.session_state
 
     # Optional: Save output to file if save_response_to_file is set
