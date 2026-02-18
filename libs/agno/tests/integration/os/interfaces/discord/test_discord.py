@@ -79,9 +79,9 @@ class TestSlashCommandFlow:
         post_interaction(client, payload)
 
         mock_agent.arun.assert_not_called()
-        # "Please provide a message" sent via webhook
-        posts = _get_calls(recording_session, "POST")
-        assert any("Please provide a message" in str(c[2]) for c in posts)
+        # "Please provide a message" sent via PATCH (edit original deferred response)
+        patches = _get_calls(recording_session, "PATCH")
+        assert any("Please provide a message" in str(c[2]) for c in patches)
 
     def test_agent_error_sends_apology(self, mock_agent, recording_session):
         mock_agent.arun = AsyncMock(side_effect=RuntimeError("Model API down"))
@@ -101,8 +101,9 @@ class TestSlashCommandFlow:
 
         post_interaction(client, make_slash_command())
 
-        posts = _get_calls(recording_session, "POST")
-        assert any("No response generated" in str(c[2]) for c in posts)
+        # "No response generated" sent via PATCH (edit original deferred response)
+        patches = _get_calls(recording_session, "PATCH")
+        assert any("No response generated" in str(c[2]) for c in patches)
 
 
 # ===========================================================================
@@ -128,7 +129,7 @@ class TestSignatureVerification:
             content=b'{"type": 1}',
             headers={"Content-Type": "application/json"},
         )
-        assert resp.status_code == 401
+        assert resp.status_code == 400
 
     def test_tampered_body_rejected(self, mock_agent, recording_session):
         app = make_discord_app(mock_agent)
@@ -139,7 +140,7 @@ class TestSignatureVerification:
         # Tamper with body after signing
         tampered_body = json.dumps({"type": 2}).encode()
         resp = client.post("/discord/interactions", content=tampered_body, headers=headers)
-        assert resp.status_code == 401
+        assert resp.status_code == 403
 
     def test_stale_timestamp_rejected(self, mock_agent, recording_session):
         app = make_discord_app(mock_agent)
@@ -161,7 +162,7 @@ class TestSignatureVerification:
                 "X-Signature-Timestamp": old_timestamp,
             },
         )
-        assert resp.status_code == 401
+        assert resp.status_code == 403
 
 
 # ===========================================================================
@@ -484,8 +485,9 @@ class TestErrorStatus:
 
         post_interaction(client, make_slash_command())
 
-        posts = _get_calls(recording_session, "POST")
-        assert any("error processing" in str(c[2]).lower() for c in posts)
+        # ERROR status sends apology via PATCH (edit original deferred response)
+        patches = _get_calls(recording_session, "PATCH")
+        assert any("error processing" in str(c[2]).lower() for c in patches)
 
     def test_exception_no_crash(self, mock_agent, recording_session):
         mock_agent.arun = AsyncMock(side_effect=ValueError("Unexpected"))
