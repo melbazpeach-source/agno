@@ -1140,6 +1140,113 @@ def add_to_knowledge(team: "Team", query: str, result: str) -> str:
     return "Successfully added to knowledge base"
 
 
+def create_knowledge_retriever_search_tool(
+    team: "Team",
+    run_response: Optional[RunOutput] = None,
+    run_context: Optional[RunContext] = None,
+    async_mode: bool = False,
+) -> Function:
+    """Create a search_knowledge_base tool using the custom knowledge_retriever.
+
+    This allows teams to use a custom retriever function without needing
+    a full Knowledge instance. The retriever is wrapped as a tool the team can call.
+    """
+
+    def search_knowledge_base(query: str) -> str:
+        """Use this function to search the knowledge base for information about a query.
+
+        Args:
+            query: The query to search for.
+
+        Returns:
+            str: A string containing the response from the knowledge base.
+        """
+        retrieval_timer = Timer()
+        retrieval_timer.start()
+
+        try:
+            docs = get_relevant_docs_from_knowledge(
+                team,
+                query=query,
+                run_context=run_context,
+            )
+        except Exception as e:
+            log_warning(f"Knowledge retriever failed: {e}")
+            return f"Error searching knowledge base: {e}"
+
+        if run_response is not None and docs:
+            references = MessageReferences(
+                query=query,
+                references=docs,
+                time=round(retrieval_timer.elapsed, 4),
+            )
+            if run_response.references is None:
+                run_response.references = []
+            run_response.references.append(references)
+
+        retrieval_timer.stop()
+        log_debug(f"Time to get references: {retrieval_timer.elapsed:.4f}s")
+
+        if not docs:
+            return "No documents found"
+
+        if team.references_format == "json":
+            return json.dumps(docs, indent=2, default=str)
+        else:
+            import yaml
+
+            return yaml.dump(docs, default_flow_style=False)
+
+    async def asearch_knowledge_base(query: str) -> str:
+        """Use this function to search the knowledge base for information about a query.
+
+        Args:
+            query: The query to search for.
+
+        Returns:
+            str: A string containing the response from the knowledge base.
+        """
+        retrieval_timer = Timer()
+        retrieval_timer.start()
+
+        try:
+            docs = await aget_relevant_docs_from_knowledge(
+                team,
+                query=query,
+                run_context=run_context,
+            )
+        except Exception as e:
+            log_warning(f"Knowledge retriever failed: {e}")
+            return f"Error searching knowledge base: {e}"
+
+        if run_response is not None and docs:
+            references = MessageReferences(
+                query=query,
+                references=docs,
+                time=round(retrieval_timer.elapsed, 4),
+            )
+            if run_response.references is None:
+                run_response.references = []
+            run_response.references.append(references)
+
+        retrieval_timer.stop()
+        log_debug(f"Time to get references: {retrieval_timer.elapsed:.4f}s")
+
+        if not docs:
+            return "No documents found"
+
+        if team.references_format == "json":
+            return json.dumps(docs, indent=2, default=str)
+        else:
+            import yaml
+
+            return yaml.dump(docs, default_flow_style=False)
+
+    if async_mode:
+        return Function.from_callable(asearch_knowledge_base, name="search_knowledge_base")
+    return Function.from_callable(search_knowledge_base, name="search_knowledge_base")
+
+
 def get_relevant_docs_from_knowledge(
     team: "Team",
     query: str,
