@@ -9,10 +9,11 @@
 |----------|-------|---------|
 | **Closed (verified fixed)** | 8 | #5754, #5173, #5858, #5329, #5334, #6327, #6209 (dupe), #5741 (dupe) |
 | **Deep-analyzed (sessions 1-3)** | 9 | #3964, #3968, #3980, #4184, #4298, #4430, #4540, #4573, #4688 |
+| **Batch 4 (this session)** | 10 | #4724, #4774, #4779, #4786, #4787, #4805, #4813, #4857, #4861, #4866 |
 | **NEEDS_TEST (not fixed)** | 3 | #5483 (partial), #5466, #5493 |
 | **PARTIAL (PR doesn't fully fix)** | 5 | #5165, #5827, #5462, #5860, #6533 |
 | **NOT_FIXED (PR doesn't match)** | 20 | See table below |
-| **Remaining untriaged** | 83 | 39 stale + 44 active |
+| **Remaining untriaged** | 73 | ~35 stale + ~38 active |
 
 ### Remaining Bugs by Component (83 total)
 
@@ -849,3 +850,213 @@ All 5 remain OPEN.
 All 20 remain OPEN.
 
 ---
+
+## Batch 4: Bugs #4724–#4866 (10 bugs)
+
+### Bug #4724 — Team Parameter Not Passed to Agent-Level Tool Functions
+
+| Field | Value |
+|-------|-------|
+| **Created** | 2025-09-21 |
+| **Labels** | `bug`, `stale` |
+| **Author** | @hungmbs |
+| **Comments** | 5 (Dirk said "Taking a look!", no fix shipped) |
+
+**Problem:** When an agent is a team member, tools registered on that agent with a `team` parameter receive `None` instead of the actual Team object.
+
+**Code trace:**
+- `tools/function.py:140` — `_team: Optional[Any] = None` (default)
+- `tools/function.py:768-769` — `_build_entrypoint_args()` passes `self.function._team` to tool
+- `team/_tools.py:315,337,363` — sets `_team` for **team-level** tools only
+- `agent/_tools.py` — **NEVER** sets `_team` on agent-level Function objects
+
+The propagation chain is: Team → Team tools get `_team` set. But Agent-member → Agent tools do NOT get `_team` set. The agent only stores `team_id` (a string), not a team object reference.
+
+**Verdict: CONFIRMED BUG — Still Active**
+
+---
+
+### Bug #4774 — LanceDB Dimension Mismatch Error
+
+| Field | Value |
+|-------|-------|
+| **Created** | 2025-09-24 |
+| **Labels** | `bug`, `stale` |
+| **Author** | @jiaohuix (original reporter unknown) |
+
+**Problem:** "query dim(1024) doesn't match the column vector dim(1536)" when using a custom embedding model with LanceDB.
+
+**Assessment:** This is a **user configuration issue**, not a bug. The user created a LanceDB table with OpenAI's default embeddings (1536 dim) then queried with a different model (1024 dim). Community member already provided the fix: specify `dimensions=1024` on the embedder.
+
+**Verdict: NOT A BUG — Close with guidance**
+
+---
+
+### Bug #4779 — MySQL Storage Upsert Error ("dict can not be used as parameter")
+
+| Field | Value |
+|-------|-------|
+| **Created** | 2025-09-24 |
+| **Labels** | `bug`, `stale` |
+| **Author** | @(unknown, PR template) |
+| **Comments** | 4 (community analyzed, Kaustubh engaged) |
+
+**Problem:** MySQL storage fails when inserting Python dicts into JSON columns.
+
+**Code trace:**
+- `db/mysql/schemas.py:17-22` — all session columns now use SQLAlchemy `JSON` type
+- `db/mysql/mysql.py:757-769` — uses proper SQLAlchemy `insert().values()` with `JSON` columns
+- SQLAlchemy's `JSON` type handles dict→JSON serialization automatically
+
+The schema was likely refactored to use `JSON` type (instead of raw text) as part of the v2 DB migration work.
+
+**Verdict: LIKELY FIXED — Need user confirmation on latest version**
+
+---
+
+### Bug #4786 — Canceling Team Runs via API Not Working (500 Error)
+
+| Field | Value |
+|-------|-------|
+| **Created** | 2025-09-24 |
+| **Labels** | `bug`, `stale` |
+| **Author** | @(unknown) |
+| **Comments** | 3 (community analyzed race condition, second user confirmed Nov 2025) |
+
+**Problem:** Cancel endpoint returns 500 for unknown run_id due to race between `cleanup_run()` and cancel.
+
+**Code trace:**
+- Cancellation system completely rewritten with `run/cancellation_management/` module
+- `in_memory_cancellation_manager.py:36-48` — `cancel_run()` stores intent even for unregistered runs
+- `redis_cancellation_manager.py:118-126` — same "cancel-before-start" support
+- Race condition explicitly addressed in design
+
+**Verdict: LIKELY IMPROVED — cancellation architecture overhauled, but team endpoint integration needs verification**
+
+---
+
+### Bug #4787 — Failed to Read Event from Codex MCP
+
+| Field | Value |
+|-------|-------|
+| **Created** | 2025-09-25 |
+| **Labels** | `bug`, `stale` |
+| **Author** | @(unknown) |
+| **Comments** | 1 (stale bot only) |
+
+**Problem:** Codex MCP server sends custom notification types (`codex/event`) that fail MCP SDK validation.
+
+**Assessment:** This is a **Codex MCP compatibility issue**, not an Agno bug. The MCP SDK validates notification types against the protocol spec, and `codex/event` is a non-standard type. Agno's MCP client correctly rejects unknown notification types per the MCP protocol.
+
+**Verdict: NOT AN AGNO BUG — Close with explanation**
+
+---
+
+### Bug #4805 — Team delegate_task_to_member Pydantic Validation Errors
+
+| Field | Value |
+|-------|-------|
+| **Created** | 2025-09-26 |
+| **Labels** | `bug`, `stale` |
+| **Author** | @ARCHIJAIN1505 |
+| **Comments** | 4 (community offered to help debug, no repro shared) |
+
+**Problem:** `delegate_task_to_member` fails with Pydantic `unexpected_keyword_argument` validation errors.
+
+**Code trace:**
+- `team/_default_tools.py:475` — current signature: `delegate_task_to_member(member_id: str, task: str)`
+- Clean parameter handling with `_find_member_by_id()` helper
+- Team delegation code was completely rewritten in the v2 refactor
+- The Pydantic errors were likely from the old `task_identifier_output` structured output parsing which no longer exists
+
+**Verdict: LIKELY FIXED — delegation code completely rewritten**
+
+---
+
+### Bug #4813 — VLLM/OpenAILike Abnormal Time Delay (Telemetry)
+
+| Field | Value |
+|-------|-------|
+| **Created** | 2025-09-26 |
+| **Labels** | `bug` |
+| **Author** | @Zuo-Lihan |
+| **Comments** | 22 (extensive debugging, root cause found: telemetry) |
+
+**Problem:** Agent hangs for ~16s after response is complete. User confirmed `telemetry=False` fixes it.
+
+**Code trace:**
+- `agent/agent.py:348` — `telemetry: bool = True` (still default)
+- `agent/_telemetry.py:50-56` — `create_agent_run()` is a **synchronous HTTP POST**
+- `api/agent.py:9-16` — uses `api.Client()` (httpx sync client) to POST to Agno's API
+- If Agno's API server is unreachable (common for private/VLLM deployments), the HTTP client blocks until connection timeout
+
+The fix should be: make telemetry non-blocking (fire-and-forget or background thread), or reduce the default timeout.
+
+**Verdict: CONFIRMED BUG — Still Active (telemetry blocks on unreachable server)**
+
+---
+
+### Bug #4857 — Gemini File API Video Upload Error
+
+| Field | Value |
+|-------|-------|
+| **Created** | 2025-09-30 |
+| **Labels** | `bug` |
+| **Author** | @(unknown) |
+| **Comments** | 3 (contributor assigned, PR submitted) |
+
+**Problem:** Video uploaded via Gemini File API, `files.get()` confirms existence, but `generate_content()` says file doesn't exist.
+
+**Code trace:**
+- `gemini.py:913-955` — video handling significantly updated
+- Proper flow: upload → wait for PROCESSING → check FAILED → use `Part.from_uri(file_uri=...)`
+- `remote_file_name` now uses `files/{stem.lower().replace('_', '')}` format
+
+The video handling code has been substantially improved. The original issue was likely a timing/state issue that the current polling loop (lines 943-946) handles.
+
+**Verdict: LIKELY IMPROVED — video handling rewritten, but Gemini API behavior may still vary**
+
+---
+
+### Bug #4861 — Cancelled Tool Call Causes Failure (Async)
+
+| Field | Value |
+|-------|-------|
+| **Created** | 2025-09-30 |
+| **Labels** | `bug` |
+| **Author** | @nilnor |
+| **Comments** | 11 (community PR #4868, reporter confirmed fix on main) |
+
+**Problem:** Raising `StopAgentRun` from tool hooks causes async crash due to uninitialized `result` variable.
+
+**Reporter confirmed fix:** @nilnor on 2025-11-20: "I checked the code in main, and since the time of this issue and PR the main issue has been fixed (`result` has an initial failing definition as a fallback), so main no longer crashes."
+
+Note: Community PR #4868 was never merged, but the fix was independently implemented on main.
+
+**Verdict: FIXED — Reporter confirmed on main (2025-11-20)**
+
+---
+
+### Bug #4866 — Valid JSON in Content String But Parsing Error
+
+| Field | Value |
+|-------|-------|
+| **Created** | 2025-10-01 |
+| **Labels** | `bug`, `stale` |
+| **Author** | @math-artist |
+| **Comments** | 8 (multiple users confirmed, ongoing Jan 2026) |
+
+**Problem:** `output_schema` parsing fails with "All parsing attempts failed" even when content is valid JSON. Especially with reasoning models.
+
+**Code trace:**
+- `utils/string.py:161-204` — `parse_response_model_str()` now has multi-stage parsing:
+  1. Extract `<think>` tags first (line 168-171)
+  2. Clean JSON content
+  3. Try `model_validate_json()` (direct)
+  4. Try `json.loads()` + `model_validate()` (dict)
+  5. Extract individual JSON objects
+  6. Merge multiple JSON objects
+
+The parsing has been significantly improved, but reports from Nov 2025 (@failable with OpenRouter reasoning) and Jan 2026 (@Benjamin-van-Heerden with Claude Sonnet 4.5) suggest edge cases remain.
+
+**Verdict: PARTIALLY IMPROVED — parsing overhauled but edge cases persist with reasoning models**
