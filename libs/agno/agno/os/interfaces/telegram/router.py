@@ -95,6 +95,9 @@ def attach_routes(
     def _message_mentions_bot(message: dict, bot_username: str) -> bool:
         text = message.get("text", "") or message.get("caption", "")
         entities = message.get("entities", []) or message.get("caption_entities", [])
+        # NOTE: Telegram entity offsets are UTF-16 code units; Python slices by
+        # code points. Mentions after non-BMP characters (e.g. emoji) may be
+        # misparsed. Acceptable trade-off for now.
         for entity in entities:
             if entity.get("type") == "mention":
                 offset = entity["offset"]
@@ -222,16 +225,16 @@ def attach_routes(
             if not items:
                 continue
             for item in items:
-                data = _resolve_media_data(item)
-                if data:
-                    try:
+                try:
+                    data = _resolve_media_data(item)
+                    if data:
                         await sender(chat_id, data, caption=caption, reply_to_message_id=reply_to)
                         any_media_sent = True
                         # Clear caption and reply_to after first successful send
                         caption = None
                         reply_to = None
-                    except Exception as e:
-                        log_error(f"Failed to send {attr.rstrip('s')} to chat {chat_id}: {e}")
+                except Exception as e:
+                    log_error(f"Failed to send {attr.rstrip('s')} to chat {chat_id}: {e}")
 
         return any_media_sent
 
@@ -265,6 +268,10 @@ def attach_routes(
 
             body = await request.json()
 
+            # Only process new messages. edited_message, channel_post, and
+            # callback_query are intentionally ignored for now.
+            # TODO: Track processed update_ids to prevent duplicate processing
+            # on webhook retries. Duplicates are rare and handled gracefully.
             message = body.get("message")
             if not message:
                 return TelegramWebhookResponse(status="ignored")
@@ -298,10 +305,11 @@ def attach_routes(
             incoming_message_id = message.get("message_id")
 
             text = message.get("text", "")
-            if text.startswith("/start"):
+            cmd = text.split()[0].split("@")[0] if text else ""
+            if cmd == "/start":
                 await bot.send_message(chat_id, start_message)
                 return
-            if text.startswith("/help"):
+            if cmd == "/help":
                 await bot.send_message(chat_id, help_message)
                 return
 
